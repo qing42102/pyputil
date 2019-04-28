@@ -108,7 +108,7 @@ def main():
 
     if args.gif:
         assert 0 < args.gif <= len(renderer.frequencies)
-        render_gif(args.gif)
+        render_gif(args.gif - 1)
     else:
         mode_ids = list(range(len(frequencies)))
         with Pool() as pool:
