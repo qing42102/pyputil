@@ -1,8 +1,44 @@
+from multiprocessing.pool import Pool
+
+from pymatgen import Structure
+import numpy as np
+import typing as tp
+
+from pyputil.io.phonopy import load_eigs_phonopy
 from pyputil.modeplot import RenderSettings, ModeRenderer
 import argparse
 
+from pyputil.svg import write_svg_gif
+
+
+def render_svg(mode_ids: tp.Union[int, tp.List[int]]):
+    if type(mode_ids) == list:
+        for m in mode_ids:
+            render_svg(m)
+    else:
+        filename = 'mode_{}.svg'.format(mode_ids + 1)
+        mode_svg = renderer.render(mode_ids)
+        mode_svg.write(filename)
+        print(filename)
+
+
+def render_gif(mode_ids: tp.Union[int, tp.List[int]]):
+    if type(mode_ids) == list:
+        for m in mode_ids:
+            render_gif(m)
+    else:
+        filename = 'mode_{}.gif'.format(mode_ids + 1)
+        write_svg_gif(
+            filename,
+            renderer.render_mode_anim(mode_ids),
+            duration=renderer.settings.gif['frame-delay'],
+        )
+        print(filename)
+
 
 def main():
+    global renderer
+
     parser = argparse.ArgumentParser(
         description='Generate SVG phonon mode plots from phonopy output.')
 
@@ -30,21 +66,56 @@ def main():
         required=True,
         help='eigenvalue input file (e.g. band.yaml, eigs.yaml)')
 
+    parser.add_argument(
+        '--all-gifs',
+        action='store_true',
+        help='render all mode gifs as well as svgs')
+
+    parser.add_argument(
+        '-g', '--gif',
+        type=int,
+        help='render a single mode gif')
+
     args = parser.parse_args()
 
+    # settings
+    settings = RenderSettings.from_file_or_default(args.config)
+
+    # read structure
+    structure = Structure.from_file(args.input)
+
+    # initial translation
+    structure.translate_sites(
+        np.arange(structure.num_sites),
+        np.array(settings.translation, dtype=float),
+        to_unit_cell=True)
+
+    # read eigenvectors
+    frequencies, eigs = load_eigs_phonopy(args.eigs)
+
+    # make supercell if specified
+    if args.supercell is not None:
+        supercell_images = np.prod(args.supercell)
+        structure.make_supercell(args.supercell)
+        eigs = np.repeat(eigs, supercell_images, axis=1)
+
     renderer = ModeRenderer(
-        structure_filename=args.input,
-        eigs_filename=args.eigs,
-        supercell=args.supercell,
-        settings=RenderSettings.from_file_or_default(args.config),
+        structure=structure,
+        frequencies=frequencies,
+        eigenvectors=eigs,
+        settings=settings,
     )
 
-    mode_ids = list(range(len(renderer.frequencies)))
+    if args.gif:
+        assert 0 < args.gif <= len(renderer.frequencies)
+        render_gif(args.gif)
+    else:
+        mode_ids = list(range(len(frequencies)))
+        with Pool() as pool:
+            pool.map(render_svg, mode_ids)
 
-    for mode in mode_ids:
-        filename = 'mode_{}.svg'.format(mode + 1)
-        mode_svg = renderer.render(mode)
-        mode_svg.write(filename)
+            if args.all_gifs:
+                pool.map(render_gif, mode_ids)
 
 
 if __name__ == '__main__':

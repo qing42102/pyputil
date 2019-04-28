@@ -7,7 +7,7 @@ from pymatgen import Structure
 import lxml.etree as etree
 
 from pyputil.io import yaml
-from pyputil.io.phonopy import load_eigs_band_yaml
+from pyputil.io.phonopy import load_eigs_phonopy
 from pyputil.misc import default_field
 from pyputil.structure.bonds import calculate_bonds, bonds_to_positions
 from pyputil.structure.element import mass_from_symbol
@@ -49,7 +49,7 @@ class RenderSettings:
     displacements: tp.Dict = default_field({
         'color': '#EB1923',
         'stroke-width': 0.1251,
-        'max-length': 1.44 / 2,
+        'max-length': 0.7,
         'arrow-width': 3 * 0.1251,
     })
 
@@ -69,6 +69,12 @@ class RenderSettings:
             'stroke': '#111417',
             'stroke-width': 0.0834,
         },
+    })
+
+    gif: tp.Dict = default_field({
+        'animation-amplitude': 0.5,
+        'num-frames': 32,
+        'frame-delay': 50,
     })
 
     def to_yaml(self, stream):
@@ -98,57 +104,37 @@ class RenderSettings:
 class ModeRenderer:
     def __init__(
             self,
-            structure_filename: str,
-            eigs_filename: str,
-            # defaults to [1, 1, 1]
-            supercell: tp.Optional[tp.List[int]] = None,
+            structure: Structure,
+            frequencies: np.array,
+            eigenvectors: np.array,
             settings: RenderSettings = RenderSettings()
     ):
         self.settings = settings
-
-        # read structure
-        structure = Structure.from_file(structure_filename)
-        # initial translation
-        structure.translate_sites(
-            np.arange(structure.num_sites),
-            np.array(settings.translation, dtype=float),
-            to_unit_cell=True)
-
-        # read eigenvectors
-        self.frequencies, self.eigenvectors = load_eigs_band_yaml(eigs_filename)
-
-        # make supercell if specified
-        if supercell is not None:
-            supercell_images = np.prod(supercell)
-            structure.make_supercell(supercell)
-            # Poscar(structure).write_file("supercell.vasp")
-            self.eigenvectors = np.repeat(
-                self.eigenvectors, supercell_images, axis=1)
-        else:
-            supercell_images = 1
+        self.frequencies = frequencies
+        self.eigenvectors = eigenvectors
 
         self.structure = structure
-        self.bonds = calculate_bonds(structure)
         self.transform = settings.scaling * \
                          np.array(settings.rotation).astype(float)
+
+        self.bonds = calculate_bonds(structure)
+        if not self.settings.bonds['draw-periodic']:
+            bond_is_periodic = np.any(self.bonds[:, :3], axis=1)
+            self.bonds = self.bonds[np.logical_not(bond_is_periodic)]
 
         # transformed positions
         self.coords = self.transform_coords(
             self.structure.cart_coords)
         self.lattice = self.transform_coords(
             self.structure.lattice.matrix)
-        self.bond_coords = self._calc_bond_coords()
+        self.bond_coords = bonds_to_positions(
+            self.bonds, self.lattice, self.coords)
 
         # transformed and normalized displacements
         self.normalized_displacements = self._calc_displacements()
 
         # view boundary
         self.view_bounds = self._calc_view_bounds()
-
-        self.frequencies, self.eigenvectors = load_eigs_band_yaml(eigs_filename)
-        self.eigenvectors = np.array([
-            np.repeat(e, supercell_images, axis=0) for e in self.eigenvectors
-        ])
 
     def _calc_displacements(self):
         # scale by 1 / sqrt(mass) to get displacements
@@ -167,16 +153,6 @@ class ModeRenderer:
         disps /= np.max(displacement_norms, axis=1, keepdims=True)
 
         return self.transform_coords(disps)
-
-    def _calc_bond_coords(self):
-        bond_positions = bonds_to_positions(
-            self.bonds, self.lattice, self.coords)
-
-        if not self.settings.bonds['draw-periodic']:
-            bond_is_periodic = np.any(self.bonds[:, :3], axis=1)
-            return bond_positions[np.logical_not(bond_is_periodic)]
-        else:
-            return bond_positions
 
     def _calc_view_bounds(self):
         rset = self.settings
@@ -213,6 +189,37 @@ class ModeRenderer:
         self.svg_atoms(svg, self.coords)
 
         return svg
+
+    def render_offset(self, svg, offsets):
+        # svg = Svg(self.view_bounds, rset.background_color)
+        #
+        # if rset.draw_info_text and mode_id is not None:
+        #     self.svg_info_text(svg, mode_id)
+
+        coords = self.coords + offsets
+        bond_coords = np.hstack((
+            self.bond_coords[:, 0, :] + offsets[self.bonds.T[3]],
+            self.bond_coords[:, 1, :] + offsets[self.bonds.T[4]],
+        )).reshape((-1, 2, 3))
+
+        self.svg_bonds(svg, bond_coords)
+        self.svg_atoms(svg, coords)
+        return svg
+
+    def render_mode_anim(self, mode_id: int) -> [Svg]:
+        rset = self.settings
+
+        displacements = self.normalized_displacements[mode_id]
+        displacements *= rset.gif['animation-amplitude']
+        thetas = np.linspace(0.0, 2 * np.pi, rset.gif['num-frames'])
+
+        return [
+            self.render_offset(
+                svg=Svg(self.view_bounds, rset.background_color),
+                offsets=displacements * math.cos(theta),
+            )
+            for theta in thetas
+        ]
 
     def svg_info_text(self, svg: Svg, mode_id):
         bounds = svg.bounds

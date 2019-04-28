@@ -6,6 +6,8 @@ import cairosvg
 import lxml.etree as etree
 from PIL import Image
 
+from pyputil.io import write_bytes
+
 NSMAP = {'xlink': 'http://www.w3.org/1999/xlink'}
 
 
@@ -73,6 +75,9 @@ class Svg:
             xml_declaration=True
         )
 
+    def write_png(self, filename):
+        write_bytes(filename, self.to_png_bytes())
+
     def to_bytes(self) -> bytes:
         return etree.tostring(
             etree.ElementTree(self.root),
@@ -103,3 +108,13 @@ def svgs_to_gif_bytes(svgs: [Svg], duration: int = 100, loop: int = 0):
         loop=loop)
 
     return output.getvalue()
+
+
+def write_svg_gif(
+        filename: str,
+        svgs: [Svg],
+        duration: int = 100,
+        loop: int = 0
+):
+    bs = svgs_to_gif_bytes(svgs=svgs, duration=duration, loop=loop)
+    write_bytes(filename, bs)
