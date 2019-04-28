@@ -80,4 +80,10 @@ atom_types:
     stroke: '#111417'
     stroke-width: 0.0834
 
+# mode animation settings
+gif:
+  animation-amplitude: 0.45
+  num-frames: 32
+  frame-delay: 50
+
 ```
