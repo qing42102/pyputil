@@ -38,11 +38,12 @@ def main():
         settings=RenderSettings.from_file_or_default(args.config),
     )
 
-    for i in range(len(renderer.frequencies)):
-        filename = 'mode_{}.svg'.format(i + 1)
+    mode_ids = list(range(len(renderer.frequencies)))
 
-        print(filename)
-        renderer.render(i).write(
+    for mode in mode_ids:
+        filename = 'mode_{}.svg'.format(mode + 1)
+        mode_svg = renderer.render(mode)
+        mode_svg.write(
             filename,
             encoding='utf-8',
             pretty_print=True,

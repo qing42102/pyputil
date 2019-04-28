@@ -3,15 +3,13 @@ import typing as tp
 from dataclasses import dataclass, asdict
 
 import numpy as np
-from numba import jit
 from pymatgen import Structure
-from pymatgen.io.vasp import Poscar
 import lxml.etree as etree
 
 from pyputil.io import yaml
 from pyputil.io.phonopy import load_eigs_band_yaml
 from pyputil.misc import default_field
-from pyputil.structure.bonds import calculate_bonds, bond_to_positions, bonds_to_positions
+from pyputil.structure.bonds import calculate_bonds, bonds_to_positions
 from pyputil.structure.element import mass_from_symbol
 
 NSMAP = {'xlink': 'http://www.w3.org/1999/xlink'}
@@ -95,6 +93,13 @@ class RenderSettings:
             print("Warning, could not open settings file.")
             return cls()
 
+@dataclass
+class ViewBounds:
+    x: float
+    y: float
+    w: float
+    h: float
+
 
 class ModeRenderer:
     def __init__(
@@ -105,99 +110,152 @@ class ModeRenderer:
             supercell: tp.Optional[tp.List[int]] = None,
             settings: RenderSettings = RenderSettings()
     ):
+        self.settings = settings
+
         # read structure
         structure = Structure.from_file(structure_filename)
         # initial translation
         structure.translate_sites(
-            np.arange(structure.num_sites), np.array(settings.translation, dtype=float), to_unit_cell=True)
+            np.arange(structure.num_sites),
+            np.array(settings.translation, dtype=float),
+            to_unit_cell=True)
+
+        # read eigenvectors
+        self.frequencies, self.eigenvectors = load_eigs_band_yaml(eigs_filename)
 
         # make supercell if specified
         if supercell is not None:
             supercell_images = np.prod(supercell)
             structure.make_supercell(supercell)
-            Poscar(structure).write_file("supercell.vasp")
+            # Poscar(structure).write_file("supercell.vasp")
+            self.eigenvectors = np.repeat(
+                self.eigenvectors, supercell_images, axis=1)
         else:
             supercell_images = 1
 
         self.structure = structure
         self.bonds = calculate_bonds(structure)
+        self.transform = settings.scaling * \
+                         np.array(settings.rotation).astype(float)
 
-        bond_is_periodic = np.any(self.bonds[:, :3], axis=1)
-        self.bond_positions = bonds_to_positions(self.bonds, self.structure)
-        self.non_periodic_bond_positions = \
-            self.bond_positions[np.logical_not(bond_is_periodic)]
+        # transformed positions
+        self.coords = self.transform_coords(
+            self.structure.cart_coords)
+        self.lattice = self.transform_coords(
+            self.structure.lattice.matrix)
+        self.bond_coords = self._calc_bond_coords()
+
+        # transformed and normalized displacements
+        self.normalized_displacements = self._calc_displacements()
+
+        # view boundary
+        self.view_bounds = self._calc_view_bounds()
 
         self.frequencies, self.eigenvectors = load_eigs_band_yaml(eigs_filename)
         self.eigenvectors = np.array([
             np.repeat(e, supercell_images, axis=0) for e in self.eigenvectors
         ])
 
-        self.settings = settings
+    def _calc_displacements(self):
+        # scale by 1 / sqrt(mass) to get displacements
+        sqrt_masses = np.array([
+            math.sqrt(mass_from_symbol(s.name))
+            for s in self.structure.species
+        ])
+
+        # only look at real components
+        real_eigs = np.real_if_close(self.eigenvectors)
+        disps = real_eigs / sqrt_masses[np.newaxis, :, np.newaxis]
+
+        # for display purposes, normalize displacements such that the maximum
+        # displacement for each mode is of length 1
+        displacement_norms = np.linalg.norm(disps, axis=2, keepdims=True)
+        disps /= np.max(displacement_norms, axis=1, keepdims=True)
+
+        return self.transform_coords(disps)
+
+    def _calc_bond_coords(self):
+        bond_positions = bonds_to_positions(
+            self.bonds, self.lattice, self.coords)
+
+        if not self.settings.bonds['draw-periodic']:
+            bond_is_periodic = np.any(self.bonds[:, :3], axis=1)
+            return bond_positions[np.logical_not(bond_is_periodic)]
+        else:
+            return bond_positions
+
+    def _calc_view_bounds(self):
+        rset = self.settings
+        padding = max(rset.padding, rset.displacements['max-length'])
+        padding *= rset.scaling
+
+        min_pos = self.coords.min(axis=0) - padding
+        max_pos = self.coords.max(axis=0) + padding
+        range_pos = max_pos - min_pos
+
+        return ViewBounds(
+            x=min_pos[0],
+            y=min_pos[1],
+            w=range_pos[0],
+            h=range_pos[1]
+        )
+
+    def transform_coords(self, coords):
+        return np.dot(coords, self.transform.T)
 
     def render(self, mode_id: tp.Optional[int]) -> etree.ElementTree:
         rset = self.settings
 
-        # our coordinate transform then consists of a rotation then scaling
-        transform = rset.scaling * np.array(rset.rotation).astype(float)
-
-        def coord_transform(coords):
-            return np.dot(transform, coords.T).T
-
         # find structure bounds
-        padding = rset.scaling * rset.padding
-        transformed_coords = coord_transform(self.structure.cart_coords)
-        min_pos = transformed_coords.min(axis=0) - padding
-        max_pos = transformed_coords.max(axis=0) + padding
-        range_pos = max_pos - min_pos
-
-        svg = self.svg_base(min_pos, range_pos)
+        bounds = self.view_bounds
+        svg = self.svg_base(bounds)
 
         # definitions for use later
         defs = etree.SubElement(svg, 'defs')
 
         if rset.background_color is not None:
-            self.svg_background(min_pos, range_pos, svg)
+            self.svg_background(bounds, svg)
 
         if rset.draw_info_text and mode_id is not None:
-            self.svg_info_text(max_pos, min_pos, mode_id, svg)
+            self.svg_info_text(bounds, mode_id, svg)
 
-        self.svg_bonds(svg, coord_transform)
+        self.svg_bonds(svg, self.bond_coords)
 
         if mode_id is not None:
-            self.svg_displacements(svg, defs, mode_id, coord_transform)
+            self.svg_displacements(svg, defs, mode_id)
 
-        self.svg_atoms(svg, coord_transform)
+        self.svg_atoms(svg, self.coords)
 
         return etree.ElementTree(svg)
 
-    def svg_base(self, min_pos, range_pos):
+    def svg_base(self, bounds: ViewBounds):
         return etree.Element("svg", nsmap=NSMAP, attrib={
-            'width': '{:.1f}'.format(range_pos[0]),
-            'height': '{:.1f}'.format(range_pos[1]),
+            'width': '{:.1f}'.format(bounds.w),
+            'height': '{:.1f}'.format(bounds.h),
             'version': '1.1',
             'viewBox': '{:.1f} {:.1f} {:.1f} {:.1f}'.format(
-                min_pos[0], min_pos[1],
-                range_pos[0], range_pos[1],
+                bounds.x, bounds.y,
+                bounds.w, bounds.h,
             ),
             'xmlns': "http://www.w3.org/2000/svg",
         })
 
-    def svg_background(self, min_pos, range_pos, svg):
-        etree.SubElement(svg, 'rect', attrib={
+    def svg_background(self, bounds: ViewBounds, svg):
+        return etree.SubElement(svg, 'rect', attrib={
             'id': 'background',
-            'x': '{:.1f}'.format(min_pos[0]),
-            'y': '{:.1f}'.format(min_pos[1]),
-            'width': '{:.1f}'.format(range_pos[0]),
-            'height': '{:.1f}'.format(range_pos[1]),
+            'x': '{:.1f}'.format(bounds.x),
+            'y': '{:.1f}'.format(bounds.y),
+            'width': '{:.1f}'.format(bounds.w),
+            'height': '{:.1f}'.format(bounds.h),
             'fill': self.settings.background_color,
         })
 
-    def svg_info_text(self, max_pos, min_pos, mode_id, svg):
+    def svg_info_text(self, bounds: ViewBounds, mode_id, svg):
         text_size = self.settings.info_text_size * self.settings.scaling
         mode_info = etree.SubElement(svg, 'text', attrib={
             'id': 'mode-info',
-            'x': '{:.1f}'.format(min_pos[0] + text_size / 3),
-            'y': '{:.1f}'.format(max_pos[1] - text_size / 3),
+            'x': '{:.1f}'.format(bounds.x + text_size / 3),
+            'y': '{:.1f}'.format(bounds.y + bounds.h - text_size / 3),
             'font-family': 'monospace',
             'font-size': '{}'.format(text_size),
             'font-weight': 'bold',
@@ -205,7 +263,7 @@ class ModeRenderer:
         mode_info.text = "id: {} | frequency: {:.4f} cm^-1"\
             .format(mode_id + 1, self.frequencies[mode_id])
 
-    def svg_atoms(self, svg, coord_transform):
+    def svg_atoms(self, svg, coords):
         rset = self.settings
 
         atom_group = etree.SubElement(svg, 'g', attrib={
@@ -219,17 +277,21 @@ class ModeRenderer:
                 'stroke': value['stroke'],
                 'stroke-width': str(value['stroke-width'] * rset.scaling),
             })
-        for site in self.structure.sites:
-            x, y, z = coord_transform(site.coords)
-            info = rset.atom_types[str(site.specie)]
 
+        for specie, [x, y, _] in zip(self.structure.species, coords):
+            info = rset.atom_types[str(specie)]
             etree.SubElement(info['group'], 'circle', attrib={
                 'r': str(info['radius'] * rset.scaling),
                 'cx': '{:.1f}'.format(x),
                 'cy': '{:.1f}'.format(y),
             })
 
-    def svg_displacements(self, svg: etree.Element, defs: etree.Element, mode_id: int, coord_transform):
+    def svg_displacements(
+            self,
+            svg: etree.Element,
+            defs: etree.Element,
+            mode_id: int,
+    ):
         rset = self.settings
 
         # displacements (phonon mode)
@@ -238,61 +300,50 @@ class ModeRenderer:
             'd': 'M -1 0 h 2 l -1 1.732 z',
             'fill': rset.displacements['color'],
             'stroke-width': '0',
-            'transform': 'scale({})'.format(rset.scaling * rset.displacements['arrow-width'] / 2)
+            'transform': 'scale({})'.format(
+                rset.scaling * rset.displacements['arrow-width'] / 2)
         })
 
         displacement_group = etree.SubElement(svg, 'g', nsmap=NSMAP, attrib={
             'id': 'displacements',
             'stroke': '#EB1923',
-            'stroke-width': str(rset.displacements['stroke-width'] * rset.scaling),
+            'stroke-width':
+                str(rset.displacements['stroke-width'] * rset.scaling),
         })
 
-        eigs = self.eigenvectors[mode_id]
-        # scale by 1 / sqrt(mass) to get displacements
-        masses = np.array([mass_from_symbol(s.name) for s in self.structure.species])
-        disps = (eigs.T / np.sqrt(masses)).T
+        disps = self.normalized_displacements[mode_id]
+        disps *= rset.displacements['max-length']
+        angles = np.degrees(np.arctan2(disps[:, 1], disps[:, 0]) - np.pi / 2)
 
-        # normalize, then scale to arrow length
-        disps = rset.displacements['max-length'] * disps / np.max(np.linalg.norm(disps, axis=1))
-
-        for pos, disp in zip(coord_transform(self.structure.cart_coords), coord_transform(disps)):
-            # pos = coord_transform(pos)
-            # disp = coord_transform(disp)
+        for pos, disp, angle in zip(self.coords, disps, angles):
             end = pos + disp
-
             etree.SubElement(displacement_group, 'path', attrib={
                 'd': 'M {:.1f} {:.1f} {:.1f} {:.1f}'.format(
                     pos[0], pos[1], end[0], end[1]
                 )
             })
 
-            # add arrow head
+            # add arrow head via href
             etree.SubElement(displacement_group, 'use', nsmap=NSMAP, attrib={
                 '{http://www.w3.org/1999/xlink}href': '#arrowhead',
                 'x': '{:.1f}'.format(end[0]),
                 'y': '{:.1f}'.format(end[1]),
                 'transform': 'rotate({:.1f} {:.1f} {:.1f})'.format(
-                    math.degrees(math.atan2(disp[1], disp[0]) - np.pi / 2), end[0], end[1]
+                    angle, end[0], end[1]
                 ),
             })
 
-    def svg_bonds(self, svg, coord_transform):
+    def svg_bonds(self, svg, bond_coords):
         rset = self.settings
-
-        # bonds
         bond_group = etree.SubElement(svg, 'g', attrib={
             'id': 'bonds',
             'stroke': rset.bonds['stroke'],
             'stroke-width': str(rset.bonds['stroke-width'] * rset.scaling),
         })
 
-        bond_pos = self.bond_positions
-        if not rset.bonds['draw-periodic']:
-            bond_pos = self.non_periodic_bond_positions
-
-        for pos_a, pos_b in zip(coord_transform(bond_pos[:, 0, :]), coord_transform(bond_pos[:, 1, :])):
+        for atom_a, atom_b in bond_coords:
             etree.SubElement(bond_group, 'path', attrib={
                 'd': 'M {:.1f} {:.1f} {:.1f} {:.1f}'.format(
-                    pos_a[0], pos_a[1], pos_b[0], pos_b[1]
+                    atom_a[0], atom_a[1], atom_b[0], atom_b[1]
                 )
             })

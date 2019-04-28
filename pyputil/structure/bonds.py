@@ -5,15 +5,16 @@ import scipy.spatial
 from pymatgen import Structure
 
 
-def bond_to_positions(bond: np.array, structure: Structure):
-    offset = np.dot(structure.lattice.matrix.T, bond[:3])
-    pos_a = structure.cart_coords[bond[3]]
-    pos_b = structure.cart_coords[bond[4]] + offset.T
+def bond_to_positions(bond: np.array, lattice, cart_coords):
+    # lattice input should be each lattice vector as a row
+    offset = np.dot(lattice.T, bond[:3])
+    pos_a = cart_coords[bond[3]]
+    pos_b = cart_coords[bond[4]] + offset.T
     return pos_a, pos_b
 
 
-def bonds_to_positions(bonds: np.array, structure: Structure):
-    pos_a, pos_b = bond_to_positions(bonds.T, structure)
+def bonds_to_positions(bonds: np.array, lattice, cart_coords):
+    pos_a, pos_b = bond_to_positions(bonds.T, lattice, cart_coords)
     return np.hstack((pos_a, pos_b)).reshape((-1, 2, 3))
 
 
