@@ -124,7 +124,8 @@ class ModeRenderer:
 
         bond_is_periodic = np.any(self.bonds[:, :3], axis=1)
         self.bond_positions = bonds_to_positions(self.bonds, self.structure)
-        self.non_periodic_bond_positions = self.bond_positions[np.logical_not(bond_is_periodic)]
+        self.non_periodic_bond_positions = \
+            self.bond_positions[np.logical_not(bond_is_periodic)]
 
         self.frequencies, self.eigenvectors = load_eigs_band_yaml(eigs_filename)
         self.eigenvectors = np.array([
@@ -133,7 +134,7 @@ class ModeRenderer:
 
         self.settings = settings
 
-    def render(self, mode_id: tp.Optional[int]):
+    def render(self, mode_id: tp.Optional[int]) -> etree.ElementTree:
         rset = self.settings
 
         # our coordinate transform then consists of a rotation then scaling
@@ -149,7 +150,28 @@ class ModeRenderer:
         max_pos = transformed_coords.max(axis=0) + padding
         range_pos = max_pos - min_pos
 
-        svg = etree.Element("svg", nsmap=NSMAP, attrib={
+        svg = self.svg_base(min_pos, range_pos)
+
+        # definitions for use later
+        defs = etree.SubElement(svg, 'defs')
+
+        if rset.background_color is not None:
+            self.svg_background(min_pos, range_pos, svg)
+
+        if rset.draw_info_text and mode_id is not None:
+            self.svg_info_text(max_pos, min_pos, mode_id, svg)
+
+        self.svg_bonds(svg, coord_transform)
+
+        if mode_id is not None:
+            self.svg_displacements(svg, defs, mode_id, coord_transform)
+
+        self.svg_atoms(svg, coord_transform)
+
+        return etree.ElementTree(svg)
+
+    def svg_base(self, min_pos, range_pos):
+        return etree.Element("svg", nsmap=NSMAP, attrib={
             'width': '{:.1f}'.format(range_pos[0]),
             'height': '{:.1f}'.format(range_pos[1]),
             'version': '1.1',
@@ -160,39 +182,28 @@ class ModeRenderer:
             'xmlns': "http://www.w3.org/2000/svg",
         })
 
-        # definitions for use later
-        defs = etree.SubElement(svg, 'defs')
+    def svg_background(self, min_pos, range_pos, svg):
+        etree.SubElement(svg, 'rect', attrib={
+            'id': 'background',
+            'x': '{:.1f}'.format(min_pos[0]),
+            'y': '{:.1f}'.format(min_pos[1]),
+            'width': '{:.1f}'.format(range_pos[0]),
+            'height': '{:.1f}'.format(range_pos[1]),
+            'fill': self.settings.background_color,
+        })
 
-        if rset.background_color is not None:
-            etree.SubElement(svg, 'rect', attrib={
-                'id': 'background',
-                'x': '{:.1f}'.format(min_pos[0]),
-                'y': '{:.1f}'.format(min_pos[1]),
-                'width': '{:.1f}'.format(range_pos[0]),
-                'height': '{:.1f}'.format(range_pos[1]),
-                'fill': rset.background_color,
-            })
-
-        if rset.draw_info_text and mode_id is not None:
-            text_size = rset.info_text_size * rset.scaling
-            mode_info = etree.SubElement(svg, 'text', attrib={
-                'id': 'mode-info',
-                'x': '{:.1f}'.format(min_pos[0] + text_size / 3),
-                'y': '{:.1f}'.format(max_pos[1] - text_size / 3),
-                'font-family': 'monospace',
-                'font-size': '{}'.format(text_size),
-                'font-weight': 'bold',
-            })
-            mode_info.text = "id: {} | frequency: {:.4f} cm^-1".format(mode_id + 1, self.frequencies[mode_id])
-
-        self.svg_bonds(svg, coord_transform)
-
-        if mode_id is not None:
-            self.svg_displacements(svg, defs, mode_id, coord_transform)
-
-        self.svg_atoms(svg, coord_transform)
-
-        return etree.ElementTree(svg)
+    def svg_info_text(self, max_pos, min_pos, mode_id, svg):
+        text_size = self.settings.info_text_size * self.settings.scaling
+        mode_info = etree.SubElement(svg, 'text', attrib={
+            'id': 'mode-info',
+            'x': '{:.1f}'.format(min_pos[0] + text_size / 3),
+            'y': '{:.1f}'.format(max_pos[1] - text_size / 3),
+            'font-family': 'monospace',
+            'font-size': '{}'.format(text_size),
+            'font-weight': 'bold',
+        })
+        mode_info.text = "id: {} | frequency: {:.4f} cm^-1"\
+            .format(mode_id + 1, self.frequencies[mode_id])
 
     def svg_atoms(self, svg, coord_transform):
         rset = self.settings

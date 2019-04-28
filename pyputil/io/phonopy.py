@@ -11,6 +11,7 @@ def load_eigs_band_yaml(filename: str):
         data = yaml.load(f)
         band = data['phonon'][0]['band']
 
+        # real only
         eigs = [np.array(mode['eigenvector'])[:, :, 0] for mode in band]
         frequencies = THZ_TO_WAVENUMBER * np.array([mode['frequency'] for mode in band])
 
