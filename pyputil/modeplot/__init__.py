@@ -143,8 +143,10 @@ class ModeRenderer:
             return np.dot(transform, coords.T).T
 
         # find structure bounds
-        min_pos = coord_transform(self.structure.cart_coords.min(0) - rset.padding)
-        max_pos = coord_transform(self.structure.cart_coords.max(0) + rset.padding)
+        padding = rset.scaling * rset.padding
+        transformed_coords = coord_transform(self.structure.cart_coords)
+        min_pos = transformed_coords.min(axis=0) - padding
+        max_pos = transformed_coords.max(axis=0) + padding
         range_pos = max_pos - min_pos
 
         svg = etree.Element("svg", nsmap=NSMAP, attrib={
