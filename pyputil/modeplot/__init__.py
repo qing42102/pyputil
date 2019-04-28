@@ -11,6 +11,7 @@ from pyputil.io.phonopy import load_eigs_band_yaml
 from pyputil.misc import default_field
 from pyputil.structure.bonds import calculate_bonds, bonds_to_positions
 from pyputil.structure.element import mass_from_symbol
+from pyputil.svg import Svg, ViewBounds
 
 NSMAP = {'xlink': 'http://www.w3.org/1999/xlink'}
 
@@ -92,13 +93,6 @@ class RenderSettings:
         except FileNotFoundError:
             print("Warning, could not open settings file.")
             return cls()
-
-@dataclass
-class ViewBounds:
-    x: float
-    y: float
-    w: float
-    h: float
 
 
 class ModeRenderer:
@@ -203,56 +197,27 @@ class ModeRenderer:
     def transform_coords(self, coords):
         return np.dot(coords, self.transform.T)
 
-    def render(self, mode_id: tp.Optional[int]) -> etree.ElementTree:
+    def render(self, mode_id: tp.Optional[int]) -> Svg:
         rset = self.settings
 
-        # find structure bounds
-        bounds = self.view_bounds
-        svg = self.svg_base(bounds)
-
-        # definitions for use later
-        defs = etree.SubElement(svg, 'defs')
-
-        if rset.background_color is not None:
-            self.svg_background(bounds, svg)
+        svg = Svg(self.view_bounds, rset.background_color)
 
         if rset.draw_info_text and mode_id is not None:
-            self.svg_info_text(bounds, mode_id, svg)
+            self.svg_info_text(svg, mode_id)
 
         self.svg_bonds(svg, self.bond_coords)
 
         if mode_id is not None:
-            self.svg_displacements(svg, defs, mode_id)
+            self.svg_displacements(svg, mode_id)
 
         self.svg_atoms(svg, self.coords)
 
-        return etree.ElementTree(svg)
+        return svg
 
-    def svg_base(self, bounds: ViewBounds):
-        return etree.Element("svg", nsmap=NSMAP, attrib={
-            'width': '{:.1f}'.format(bounds.w),
-            'height': '{:.1f}'.format(bounds.h),
-            'version': '1.1',
-            'viewBox': '{:.1f} {:.1f} {:.1f} {:.1f}'.format(
-                bounds.x, bounds.y,
-                bounds.w, bounds.h,
-            ),
-            'xmlns': "http://www.w3.org/2000/svg",
-        })
-
-    def svg_background(self, bounds: ViewBounds, svg):
-        return etree.SubElement(svg, 'rect', attrib={
-            'id': 'background',
-            'x': '{:.1f}'.format(bounds.x),
-            'y': '{:.1f}'.format(bounds.y),
-            'width': '{:.1f}'.format(bounds.w),
-            'height': '{:.1f}'.format(bounds.h),
-            'fill': self.settings.background_color,
-        })
-
-    def svg_info_text(self, bounds: ViewBounds, mode_id, svg):
+    def svg_info_text(self, svg: Svg, mode_id):
+        bounds = svg.bounds
         text_size = self.settings.info_text_size * self.settings.scaling
-        mode_info = etree.SubElement(svg, 'text', attrib={
+        mode_info = etree.SubElement(svg.root, 'text', attrib={
             'id': 'mode-info',
             'x': '{:.1f}'.format(bounds.x + text_size / 3),
             'y': '{:.1f}'.format(bounds.y + bounds.h - text_size / 3),
@@ -263,10 +228,10 @@ class ModeRenderer:
         mode_info.text = "id: {} | frequency: {:.4f} cm^-1"\
             .format(mode_id + 1, self.frequencies[mode_id])
 
-    def svg_atoms(self, svg, coords):
+    def svg_atoms(self, svg: Svg, coords):
         rset = self.settings
 
-        atom_group = etree.SubElement(svg, 'g', attrib={
+        atom_group = etree.SubElement(svg.root, 'g', attrib={
             'id': 'atoms'
         })
 
@@ -286,16 +251,11 @@ class ModeRenderer:
                 'cy': '{:.1f}'.format(y),
             })
 
-    def svg_displacements(
-            self,
-            svg: etree.Element,
-            defs: etree.Element,
-            mode_id: int,
-    ):
+    def svg_displacements(self, svg: Svg, mode_id: int):
         rset = self.settings
 
         # displacements (phonon mode)
-        etree.SubElement(defs, 'path', attrib={
+        svg.add_def('path', attrib={
             'id': 'arrowhead',
             'd': 'M -1 0 h 2 l -1 1.732 z',
             'fill': rset.displacements['color'],
@@ -304,12 +264,13 @@ class ModeRenderer:
                 rset.scaling * rset.displacements['arrow-width'] / 2)
         })
 
-        displacement_group = etree.SubElement(svg, 'g', nsmap=NSMAP, attrib={
-            'id': 'displacements',
-            'stroke': '#EB1923',
-            'stroke-width':
-                str(rset.displacements['stroke-width'] * rset.scaling),
-        })
+        displacement_group = etree.SubElement(
+            svg.root, 'g', nsmap=NSMAP, attrib={
+                'id': 'displacements',
+                'stroke': '#EB1923',
+                'stroke-width':
+                    str(rset.displacements['stroke-width'] * rset.scaling),
+            })
 
         disps = self.normalized_displacements[mode_id]
         disps *= rset.displacements['max-length']
@@ -324,7 +285,7 @@ class ModeRenderer:
             })
 
             # add arrow head via href
-            etree.SubElement(displacement_group, 'use', nsmap=NSMAP, attrib={
+            svg.use_def(displacement_group, '#arrowhead', attrib={
                 '{http://www.w3.org/1999/xlink}href': '#arrowhead',
                 'x': '{:.1f}'.format(end[0]),
                 'y': '{:.1f}'.format(end[1]),
@@ -333,9 +294,9 @@ class ModeRenderer:
                 ),
             })
 
-    def svg_bonds(self, svg, bond_coords):
+    def svg_bonds(self, svg: Svg, bond_coords):
         rset = self.settings
-        bond_group = etree.SubElement(svg, 'g', attrib={
+        bond_group = etree.SubElement(svg.root, 'g', attrib={
             'id': 'bonds',
             'stroke': rset.bonds['stroke'],
             'stroke-width': str(rset.bonds['stroke-width'] * rset.scaling),

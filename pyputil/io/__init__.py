@@ -9,3 +9,8 @@ def zopen(filename: str, *args):
         return gzip.open(filename, *args)
     else:
         return open(filename, *args)
+
+
+def write_bytes(filename: str, content: bytes):
+    with open(filename, 'wb') as f:
+        f.write(content)

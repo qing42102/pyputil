@@ -3,7 +3,8 @@ import argparse
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate SVG phonon mode plots from phonopy output.')
+    parser = argparse.ArgumentParser(
+        description='Generate SVG phonon mode plots from phonopy output.')
 
     parser.add_argument(
         '-c', '--config',
@@ -43,12 +44,7 @@ def main():
     for mode in mode_ids:
         filename = 'mode_{}.svg'.format(mode + 1)
         mode_svg = renderer.render(mode)
-        mode_svg.write(
-            filename,
-            encoding='utf-8',
-            pretty_print=True,
-            xml_declaration=True
-        )
+        mode_svg.write(filename)
 
 
 if __name__ == '__main__':
