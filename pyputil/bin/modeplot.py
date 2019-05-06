@@ -40,7 +40,7 @@ def main():
     global renderer
 
     parser = argparse.ArgumentParser(
-        description='Generate SVG phonon mode plots from phonopy output.')
+        description='Generate SVG/GIF phonon mode plots from phonopy output.')
 
     parser.add_argument(
         '-c', '--config',
@@ -50,31 +50,35 @@ def main():
 
     parser.add_argument(
         '-s', '--supercell',
+        metavar='N',
         nargs=3,
         type=int,
         default=[1, 1, 1])
 
     parser.add_argument(
         '-i', '--input',
+        metavar='STRUCTURE_FILE',
         type=str,
         required=True,
-        help='input structure file (e.g. POSCAR)')
+        help='input structure file (e.g. POSCAR, input.cif)')
 
     parser.add_argument(
         '-e', '--eigs',
+        metavar='EIGENVECTOR_FILE',
         type=str,
         required=True,
-        help='eigenvalue input file (e.g. band.yaml, eigs.yaml)')
+        help='eigenvalue input file (e.g. band.yaml, qpoints.hdf5)')
+
+    parser.add_argument(
+        '-g', '--gif',
+        metavar='MODE_ID',
+        type=int,
+        help='render a single mode gif')
 
     parser.add_argument(
         '--all-gifs',
         action='store_true',
         help='render all mode gifs as well as svgs')
-
-    parser.add_argument(
-        '-g', '--gif',
-        type=int,
-        help='render a single mode gif')
 
     parser.add_argument(
         '--parallel',

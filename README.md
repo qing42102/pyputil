@@ -1,5 +1,26 @@
 # pyputil
 
+```
+usage: modeplot [-h] [-c CONFIG] [-s N N N] -i STRUCTURE_FILE -e
+                EIGENVECTOR_FILE [-g MODE_ID] [--all-gifs] [--parallel]
+
+Generate SVG/GIF phonon mode plots from phonopy output.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CONFIG, --config CONFIG
+                        optional render settings config in yaml format
+  -s N N N, --supercell N N N
+  -i STRUCTURE_FILE, --input STRUCTURE_FILE
+                        input structure file (e.g. POSCAR, input.cif)
+  -e EIGENVECTOR_FILE, --eigs EIGENVECTOR_FILE
+                        eigenvalue input file (e.g. band.yaml, qpoints.hdf5)
+  -g MODE_ID, --gif MODE_ID
+                        render a single mode gif
+  --all-gifs            render all mode gifs as well as svgs
+  --parallel            try to render modes in parallel
+
+```
 ### Installation
 First install the dependencies via pip by navigating to the pyputil folder and then installing pyputil itself 
 ```bash
