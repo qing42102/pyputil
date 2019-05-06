@@ -1,5 +1,8 @@
 # pyputil
 
+![Example PNG](https://raw.githubusercontent.com/colin-daniels/pyputil/assets/example.png)
+![Example GIF](https://raw.githubusercontent.com/colin-daniels/pyputil/assets/example.gif)
+
 ```
 usage: modeplot [-h] [-c CONFIG] [-s N N N] -i STRUCTURE_FILE -e
                 EIGENVECTOR_FILE [-g MODE_ID] [--all-gifs] [--parallel]
