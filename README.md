@@ -37,7 +37,8 @@ You can customize the output by supplying a config file as an argument like `--c
 file below
 ```yaml
 
-# how much to translate the structure
+# how much to translate the structure (in direct coordinates, i.e. multiples
+# of the lattice vectors)
 translation: [0.0, 0.0, 0.0]
 # structure rotation (applied after translation)
 rotation:
@@ -67,6 +68,10 @@ displacements:
   # the largest displacement in a given mode will be scaled to this length
   max-length: 0.75
   stroke-width: 0.125
+  # whether to take displacements = -displacements since sometimes
+  # those plots look better. can either be boolean true/false, or a list
+  # of mode indices which should be inverted (1-indexed)
+  invert-direction: false
 
 atom_types:
   C:

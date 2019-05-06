@@ -20,7 +20,8 @@ NSMAP = {'xlink': 'http://www.w3.org/1999/xlink'}
 class RenderSettings:
     # image size multiplier
     scaling: float = 30.0
-    # how much to translate the structure
+    # how much to translate the structure (in direct coordinates, i.e. multiples
+    # of the lattice vectors)
     translation: tp.List[float] = default_field([0.0, 0.0, 0.0])
     # structure rotation (applied after translation)
     rotation: tp.List[tp.List[float]] = default_field([
@@ -47,6 +48,10 @@ class RenderSettings:
     })
 
     displacements: tp.Dict = default_field({
+        # whether to take displacements = -displacements since sometimes
+        # those plots look better. can either be boolean true/false, or a list
+        # of mode indices which should be inverted
+        'invert-direction': False,
         'color': '#EB1923',
         'stroke-width': 0.1251,
         'max-length': 0.7,
@@ -279,7 +284,17 @@ class ModeRenderer:
                     str(rset.displacements['stroke-width'] * rset.scaling),
             })
 
+        invert_dir = rset.displacements['invert-direction']
+        if type(invert_dir) == list:
+            should_invert = (mode_id + 1) in invert_dir
+        else:
+            assert type(invert_dir) == bool
+            should_invert = invert_dir
+
         disps = self.normalized_displacements[mode_id]
+        if should_invert:
+            disps = -disps
+
         disps *= rset.displacements['max-length']
         angles = np.degrees(np.arctan2(disps[:, 1], disps[:, 0]) - np.pi / 2)
 
