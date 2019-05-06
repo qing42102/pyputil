@@ -2,7 +2,6 @@ import io
 from dataclasses import dataclass
 import typing as tp
 
-import cairosvg
 import lxml.etree as etree
 from PIL import Image
 
@@ -85,6 +84,7 @@ class Svg:
             method='xml')
 
     def to_png_bytes(self) -> bytes:
+        import cairosvg
         return cairosvg.svg2png(bytestring=self.to_bytes())
 
     def to_pil_image(self) -> Image.Image:
