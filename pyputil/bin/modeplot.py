@@ -76,6 +76,11 @@ def main():
         type=int,
         help='render a single mode gif')
 
+    parser.add_argument(
+        '--parallel',
+        action='store_true',
+        help='try to render modes in parallel')
+
     args = parser.parse_args()
 
     # settings
@@ -111,11 +116,17 @@ def main():
         render_gif(args.gif - 1)
     else:
         mode_ids = list(range(len(frequencies)))
-        with Pool() as pool:
-            pool.map(render_svg, mode_ids)
+        if args.parallel:
+            with Pool() as pool:
+                pool.map(render_svg, mode_ids)
+
+                if args.all_gifs:
+                    pool.map(render_gif, mode_ids)
+        else:
+            render_svg(mode_ids)
 
             if args.all_gifs:
-                pool.map(render_gif, mode_ids)
+                render_gif(mode_ids)
 
 
 if __name__ == '__main__':
