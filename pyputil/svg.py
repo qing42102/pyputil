@@ -23,8 +23,8 @@ class Svg:
                  background_color: tp.Optional[str] = None):
         self.bounds = view_bounds
         self.root = etree.Element("svg", nsmap=NSMAP, attrib={
-            'width': '{:.1f}'.format(view_bounds.w),
-            'height': '{:.1f}'.format(view_bounds.h),
+            'width': f'{view_bounds.w:.1f}',
+            'height': f'{view_bounds.h:.1f}',
             'version': '1.1',
             'viewBox': '{:.1f} {:.1f} {:.1f} {:.1f}'.format(
                 view_bounds.x, view_bounds.y,
@@ -39,10 +39,10 @@ class Svg:
         if background_color:
             etree.SubElement(self.root, 'rect', attrib={
                 'id': 'background',
-                'x': '{:.1f}'.format(self.bounds.x),
-                'y': '{:.1f}'.format(self.bounds.y),
-                'width': '{:.1f}'.format(self.bounds.w),
-                'height': '{:.1f}'.format(self.bounds.h),
+                'x': f'{self.bounds.x:.1f}',
+                'y': f'{self.bounds.y:.1f}',
+                'width': f'{self.bounds.w:.1f}',
+                'height': f'{self.bounds.h:.1f}',
                 'fill': background_color,
             })
 
@@ -58,7 +58,7 @@ class Svg:
             attrib = {}
 
         if href not in self._def_names:
-            raise KeyError("href {} not found in definitions".format(href))
+            raise KeyError(f"href {href} not found in definitions")
 
         return etree.SubElement(parent, 'use', nsmap=NSMAP, attrib={
             **attrib,

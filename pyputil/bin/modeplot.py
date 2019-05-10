@@ -16,7 +16,7 @@ def render_svg(mode_ids: tp.Union[int, tp.List[int]]):
         for m in mode_ids:
             render_svg(m)
     else:
-        filename = 'mode_{}.svg'.format(mode_ids + 1)
+        filename = f'mode_{mode_ids + 1}.svg'
         mode_svg = renderer.render(mode_ids)
         mode_svg.write(filename)
         print(filename)
@@ -27,7 +27,7 @@ def render_gif(mode_ids: tp.Union[int, tp.List[int]]):
         for m in mode_ids:
             render_gif(m)
     else:
-        filename = 'mode_{}.gif'.format(mode_ids + 1)
+        filename = f'mode_{mode_ids + 1}.gif'
         write_svg_gif(
             filename,
             renderer.render_mode_anim(mode_ids),

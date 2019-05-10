@@ -7,7 +7,6 @@ from pymatgen import Structure
 import lxml.etree as etree
 
 from pyputil.io import yaml
-from pyputil.io.phonopy import load_eigs_phonopy
 from pyputil.misc import default_field
 from pyputil.structure.bonds import calculate_bonds, bonds_to_positions
 from pyputil.structure.element import mass_from_symbol
