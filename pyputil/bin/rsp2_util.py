@@ -33,20 +33,21 @@ def setup_solve_opts(subparsers):
     solve_parser.add_argument('--output', '-o', type=str, required=True,
                               help="frequency/eigenvector output filename (npz format, uses numpy.savez_compressed)")
 
-    def main_solve(args):
-        from pyputil.io.eigs import solve_dynmat
-        import scipy.sparse
-
-        dynmat = scipy.sparse.load_npz(args.DYNMAT)
-        evals, evecs = solve_dynmat(dynmat)
-
-        np.savez_compressed(
-            args.output,
-            frequencies=evals,
-            eigenvectors=evecs)
-
     # set function to be run if we select this subcommand
-    solve_parser.set_defaults(func=main_solve)
+    solve_parser.set_defaults(func=run_solve)
+
+
+def run_solve(args):
+    from pyputil.io.eigs import solve_dynmat
+    import scipy.sparse
+
+    dynmat = scipy.sparse.load_npz(args.DYNMAT)
+    evals, evecs = solve_dynmat(dynmat)
+
+    np.savez_compressed(
+        args.output,
+        frequencies=evals,
+        eigenvectors=evecs)
 
 
 if __name__ == '__main__':

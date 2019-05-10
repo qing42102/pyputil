@@ -54,28 +54,29 @@ def setup_gnr_opts(subparsers):
         action='store_true',
         help='generate a periodic GNR instead of finite')
 
-    def main_gnr(args):
-        if not args.periodic and not args.length:
-            print("missing --length argument for finite gnr", file=sys.stderr)
-            sys.exit(1)
-        elif args.periodic:
-            if not args.output:
-                args.output = f"periodic-agnr-{args.width}.vasp"
-
-            gnr = generate_periodic_agnr(args.width)
-            if args.length:
-                gnr.make_supercell([args.length, 1, 1])
-
-            gnr.to(filename=args.output, fmt="poscar")
-        else:
-            if not args.output:
-                args.output = f"finite-gnr-{args.width}x{args.length}.vasp"
-
-            gnr = generate_finite_agnr(args.width, args.length)
-            gnr.to(filename=args.output, fmt="poscar")
-
     # set function to be run if we select this subcommand
-    gnr_parser.set_defaults(func=main_gnr)
+    gnr_parser.set_defaults(func=run_gnr)
+
+
+def run_gnr(args):
+    if not args.periodic and not args.length:
+        print("missing --length argument for finite gnr", file=sys.stderr)
+        sys.exit(1)
+    elif args.periodic:
+        if not args.output:
+            args.output = f"periodic-agnr-{args.width}.vasp"
+
+        gnr = generate_periodic_agnr(args.width)
+        if args.length:
+            gnr.make_supercell([args.length, 1, 1])
+
+        gnr.to(filename=args.output, fmt="poscar")
+    else:
+        if not args.output:
+            args.output = f"finite-gnr-{args.width}x{args.length}.vasp"
+
+        gnr = generate_finite_agnr(args.width, args.length)
+        gnr.to(filename=args.output, fmt="poscar")
 
 
 def setup_cnt_opts(subparsers):
@@ -105,14 +106,15 @@ def setup_cnt_opts(subparsers):
         help='chirality',
         required=True)
 
-    def main_cnt(args):
-        if not args.output:
-            args.output = f"cnt-{args.n}x{args.m}.vasp"
+    gnr_parser.set_defaults(func=run_cnt)
 
-        cnt = generate_cnt(args.n, args.m)
-        cnt.to(filename=args.output, fmt="poscar")
 
-    gnr_parser.set_defaults(func=main_cnt)
+def run_cnt(args):
+    if not args.output:
+        args.output = f"cnt-{args.n}x{args.m}.vasp"
+
+    cnt = generate_cnt(args.n, args.m)
+    cnt.to(filename=args.output, fmt="poscar")
 
 
 if __name__ == '__main__':

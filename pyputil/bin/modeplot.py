@@ -108,35 +108,33 @@ def main():
         help='print default yaml settings to stdout and exit')
 
     args = parser.parse_args()
+    run(args)
 
+
+def run(args):
+    global renderer
     # settings
     settings = RenderSettings.from_file_or_default(args.config)
-
     # read structure
     structure = Structure.from_file(args.input)
-
     # initial translation
     structure.translate_sites(
         np.arange(structure.num_sites),
         np.array(settings.translation, dtype=float),
         to_unit_cell=True)
-
     # read eigenvectors
     frequencies, eigs = pyputil.io.eigs.from_file(args.eigs)
-
     # make supercell if specified
     if args.supercell is not None:
         supercell_images = np.prod(args.supercell)
         structure.make_supercell(args.supercell)
         eigs = np.repeat(eigs, supercell_images, axis=1)
-
     renderer = ModeRenderer(
         structure=structure,
         frequencies=frequencies,
         eigenvectors=eigs,
         settings=settings,
     )
-
     if args.gif:
         assert 0 < args.gif <= len(renderer.frequencies)
         render_gif(args.gif - 1)
