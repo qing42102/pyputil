@@ -1,4 +1,5 @@
 from multiprocessing.pool import Pool
+import sys
 
 from pymatgen import Structure
 import numpy as np
@@ -36,11 +37,21 @@ def render_gif(mode_ids: tp.Union[int, tp.List[int]]):
         print(filename)
 
 
+class PrintDefaultsAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        defaults = RenderSettings()
+        defaults.to_yaml(sys.stdout)
+        parser.exit()
+
+
 def main():
     global renderer
 
     parser = argparse.ArgumentParser(
+        prog="modeplot",
         description='Generate SVG/GIF phonon mode plots from phonopy output.')
+
+    parser.register('action', 'print_defaults', PrintDefaultsAction)
 
     parser.add_argument(
         '-c', '--config',
@@ -78,12 +89,18 @@ def main():
     parser.add_argument(
         '--all-gifs',
         action='store_true',
-        help='render all mode gifs as well as svgs')
+        help='render all modes as gifs in addition to svgs')
 
     parser.add_argument(
         '--parallel',
         action='store_true',
         help='try to render modes in parallel')
+
+    parser.add_argument(
+        '--print-defaults',
+        nargs=0,
+        action='print_defaults',
+        help='print default yaml settings to stdout and exit')
 
     args = parser.parse_args()
 
