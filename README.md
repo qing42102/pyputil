@@ -153,3 +153,36 @@ optional arguments:
   -l M, --length M
   -p, --periodic        generate a periodic GNR instead of finite
 ```
+
+## rsp2-util
+
+```
+usage: rsp2-util [-h] {solve-dynmat} ...
+
+Utilities for working with rsp2 and rsp2 output
+
+optional arguments:
+  -h, --help      show this help message and exit
+
+subcommands:
+  {solve-dynmat}
+    solve-dynmat  solve rsp2 dynamical matrix
+```
+
+### solve-dynmat
+```
+usage: rsp2-util solve-dynmat [-h] --output OUTPUT DYNMAT
+
+Solve rsp2 dynamical matrix and output eigenvectors/eigenvalues using
+numpy.linalg.eigh
+
+positional arguments:
+  DYNMAT                dynmat file (sparse npz format, e.g. gamma-
+                        dynmat-01.npz)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        frequency/eigenvector output filename (npz format,
+                        uses numpy.savez_compressed)
+```

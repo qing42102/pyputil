@@ -37,6 +37,7 @@ if __name__ == "__main__":
             'console_scripts': [
                 'modeplot = pyputil.bin.modeplot:main',
                 'structure-gen = pyputil.bin.structure_gen:main',
+                'rsp2-util = pyputil.bin.rsp2_util:main',
             ]
         }
     )

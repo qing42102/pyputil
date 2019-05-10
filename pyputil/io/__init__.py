@@ -1,4 +1,3 @@
-import gzip
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -7,6 +6,7 @@ yaml = YAML(typ='safe')
 
 def zopen(path: Path, *args):
     if path.suffix == ".gz":
+        import gzip
         return gzip.open(path, *args)
     else:
         return path.open(*args)

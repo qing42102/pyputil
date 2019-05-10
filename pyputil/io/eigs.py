@@ -1,7 +1,6 @@
 import pathlib
 
 import numpy as np
-import h5py
 
 from pyputil.io import yaml, zopen
 
@@ -24,15 +23,20 @@ def solve_dynmat(dynmat):
         np.sqrt(np.abs(evals))
     )
 
+    # reshape to 3d vectors
+    evals = np.asarray(evals)
+    evecs = np.asarray(evecs.T).reshape((len(evals), -1, 3))
+
     # note: eigenvectors are orthonormal, and to convert to displacements
     # they must be divided by sqrt(mass) for each atom
-    return evals, evecs.T
+    return evals, evecs
 
 
 def from_file(path: str):
     path = pathlib.Path(path)
 
     if path.suffix == ".hdf5":
+        import h5py
         with h5py.File(path) as data:
             frequencies = data['frequency'][0]
             # convert from THz to cm^-1
@@ -45,9 +49,11 @@ def from_file(path: str):
         # looks like rsp2 output, so load the dynamical matrix and solve it
         dynmat = scipy.sparse.load_npz(path)
         frequencies, eigs = solve_dynmat(dynmat)
-        # reshape to 3d vectors
-        frequencies = np.asarray(frequencies)
-        eigs = np.asarray(eigs).reshape((len(frequencies), -1, 3))
+    elif path.suffix == ".npz":
+        # maybe just eigenvalues/eigenvectors in an npz file
+        data = np.load(path)
+        frequencies = data['frequencies']
+        eigs = data['eigenvectors']
     else:
         with zopen(path, 'r') as f:
             data = yaml.load(f)
@@ -60,5 +66,13 @@ def from_file(path: str):
             frequencies = np.array([mode['frequency'] for mode in band])
             # convert from THz to cm^-1
             frequencies *= THZ_TO_WAVENUMBER
+
+    n_modes = frequencies.shape[0]
+    assert n_modes % 3 == 0
+
+    n_atoms = n_modes // 3
+    assert eigs.shape[0] == n_modes
+    assert eigs.shape[1] == n_atoms
+    assert eigs.shape[2] == 3
 
     return frequencies, eigs
