@@ -81,25 +81,6 @@ def center_structure(structure: Structure) -> Structure:
     return structure
 
 
-def graphene_unit_cell() -> Structure:
-    return Structure(
-        lattice=Lattice([
-            [1, 0, 0],
-            [0.5, np.sqrt(3) / 2, 0],
-            [0, 0, 15],
-        ]),
-        species=[
-            Element.C,
-            Element.C,
-        ],
-        coords=np.array([
-            [0, 0, 0],
-            [np.sqrt(3) / 2, 0.5, 0],
-        ]),
-        coords_are_cartesian=True,
-    )
-
-
 def agnr_unit_cell(vacuum_sep: float = 10) -> Structure:
     return Structure(
         lattice=Lattice([
@@ -125,14 +106,14 @@ def agnr_unit_cell(vacuum_sep: float = 10) -> Structure:
 
 def generate_periodic_agnr(
         width_n: int,
-        a: float = 1.44,
+        bond_dist: float = 1.44,
         vacuum_sep: float = 15,
         hydrogen: bool = True,
 ):
     assert width_n >= 2
 
-    # put vacuum separation in terms of a
-    vacuum_sep /= a
+    # put vacuum separation in terms of the bond distance
+    vacuum_sep /= bond_dist
 
     cell = agnr_unit_cell(vacuum_sep=vacuum_sep)
     if width_n % 2 == 0:
@@ -151,15 +132,15 @@ def generate_periodic_agnr(
     if hydrogen:
         add_hydrogen(cell)
 
-    # scale to match a
-    cell.lattice = Lattice(matrix=cell.lattice.matrix * a)
+    # scale to bond distances
+    cell.lattice = Lattice(matrix=cell.lattice.matrix * bond_dist)
     return cell
 
 
 def _generate_finite_agnr_from_periodic(
         periodic_gnr: Structure,
         length_m: int,
-        a: float,
+        bond_dist: float,
         vacuum_sep: float,
         hydrogen: bool,
 ):
@@ -175,8 +156,8 @@ def _generate_finite_agnr_from_periodic(
         to_remove = np.argsort(cell.cart_coords[:, 0])[-num_to_remove:]
         cell.remove_sites(to_remove)
 
-    # put vacuum separation in terms of a
-    vacuum_sep /= a
+    # put vacuum separation in terms of the bond distance
+    vacuum_sep /= bond_dist
     cell = add_vacuum_sep(cell, vx=vacuum_sep, vy=vacuum_sep, vz=vacuum_sep)
     # center new structure
     cell = center_structure(cell)
@@ -188,24 +169,24 @@ def _generate_finite_agnr_from_periodic(
     if hydrogen:
         add_hydrogen(cell)
 
-    # scale to match a
-    cell.lattice = Lattice(matrix=cell.lattice.matrix * a)
+    # scale to bond distances
+    cell.lattice = Lattice(matrix=cell.lattice.matrix * bond_dist)
     return cell
 
 
 def generate_finite_agnr(
         width_n: int,
         length_m: tp.Union[tp.Iterable[int], int],
-        a: float = 1.44,
+        bond_dist: float = 1.44,
         vacuum_sep: float = 15,
         hydrogen: bool = True,
 ):
     cell = generate_periodic_agnr(
-        width_n=width_n, a=1.0, vacuum_sep=vacuum_sep, hydrogen=False)
+        width_n=width_n, bond_dist=1.0, vacuum_sep=vacuum_sep, hydrogen=False)
 
     def generate(length: int) -> Structure:
         return _generate_finite_agnr_from_periodic(
-            cell.copy(), length, a=a, vacuum_sep=vacuum_sep, hydrogen=hydrogen)
+            cell.copy(), length, bond_dist=bond_dist, vacuum_sep=vacuum_sep, hydrogen=hydrogen)
 
     try:
         # length_m is hopefully iterable

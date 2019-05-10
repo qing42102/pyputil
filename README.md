@@ -125,7 +125,7 @@ gif:
 ## structure-gen
 
 ```
-usage: structure-gen [-h] {gnr} ...
+usage: structure-gen [-h] {gnr,cnt} ...
 
 Generate various structures, see subcommands for more information
 
@@ -133,8 +133,9 @@ optional arguments:
   -h, --help  show this help message and exit
 
 subcommands:
-  {gnr}
+  {gnr,cnt}
     gnr       generate graphene nanoribbons in POSCAR format
+    cnt       generate carbon nanotubes in POSCAR format
 ```
 
 ### gnr
@@ -154,6 +155,21 @@ optional arguments:
   -p, --periodic        generate a periodic GNR instead of finite
 ```
 
+### cnt
+
+```
+usage: structure-gen cnt [-h] [-o OUTPUT] -n N -m M
+
+Generate carbon nanotube structures in POSCAR format.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        output filename, default is cnt-<n>x<m>.vasp
+  -n N                  chirality
+  -m M                  chirality
+```
+
 ## rsp2-util
 
 ```
@@ -170,6 +186,7 @@ subcommands:
 ```
 
 ### solve-dynmat
+
 ```
 usage: rsp2-util solve-dynmat [-h] --output OUTPUT DYNMAT
 

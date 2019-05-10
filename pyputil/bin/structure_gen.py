@@ -2,6 +2,7 @@ import argparse
 import sys
 
 from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr
+from pyputil.structure.nanotube import generate_cnt
 
 
 def main():
@@ -13,6 +14,7 @@ def main():
     # subcommands
     subparsers = parser.add_subparsers(title="subcommands")
     setup_gnr_opts(subparsers)
+    setup_cnt_opts(subparsers)
 
     # error if no subcommand
     parser.set_defaults(func=lambda _: parser.error("missing subcommand"))
@@ -52,29 +54,65 @@ def setup_gnr_opts(subparsers):
         action='store_true',
         help='generate a periodic GNR instead of finite')
 
+    def main_gnr(args):
+        if not args.periodic and not args.length:
+            print("missing --length argument for finite gnr", file=sys.stderr)
+            sys.exit(1)
+        elif args.periodic:
+            if not args.output:
+                args.output = f"periodic-agnr-{args.width}.vasp"
+
+            gnr = generate_periodic_agnr(args.width)
+            if args.length:
+                gnr.make_supercell([args.length, 1, 1])
+
+            gnr.to(filename=args.output, fmt="poscar")
+        else:
+            if not args.output:
+                args.output = f"finite-gnr-{args.width}x{args.length}.vasp"
+
+            gnr = generate_finite_agnr(args.width, args.length)
+            gnr.to(filename=args.output, fmt="poscar")
+
     # set function to be run if we select this subcommand
     gnr_parser.set_defaults(func=main_gnr)
 
 
-def main_gnr(args):
-    if not args.periodic and not args.length:
-        print("missing --length argument for finite gnr", file=sys.stderr)
-        sys.exit(1)
-    elif args.periodic:
+def setup_cnt_opts(subparsers):
+    # gnr options
+    gnr_parser = subparsers.add_parser(
+        'cnt',
+        help='generate carbon nanotubes in POSCAR format',
+        description='Generate carbon nanotube structures in POSCAR format.')
+
+    gnr_parser.add_argument(
+        '-o', '--output',
+        type=str,
+        required=False,
+        help='output filename, default is cnt-<n>x<m>.vasp')
+
+    gnr_parser.add_argument(
+        '-n',
+        metavar='N',
+        type=int,
+        help='chirality',
+        required=True)
+
+    gnr_parser.add_argument(
+        '-m',
+        metavar='M',
+        type=int,
+        help='chirality',
+        required=True)
+
+    def main_cnt(args):
         if not args.output:
-            args.output = f"periodic-agnr-{args.width}.vasp"
+            args.output = f"cnt-{args.n}x{args.m}.vasp"
 
-        gnr = generate_periodic_agnr(args.width)
-        if args.length:
-            gnr.make_supercell([args.length, 1, 1])
+        cnt = generate_cnt(args.n, args.m)
+        cnt.to(filename=args.output, fmt="poscar")
 
-        gnr.to(filename=args.output, fmt="poscar")
-    else:
-        if not args.output:
-            args.output = f"finite-gnr-{args.width}x{args.length}.vasp"
-
-        gnr = generate_finite_agnr(args.width, args.length)
-        gnr.to(filename=args.output, fmt="poscar")
+    gnr_parser.set_defaults(func=main_cnt)
 
 
 if __name__ == '__main__':
