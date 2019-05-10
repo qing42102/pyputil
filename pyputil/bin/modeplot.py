@@ -1,4 +1,4 @@
-from multiprocessing.pool import Pool
+import os
 import sys
 
 from pymatgen import Structure
@@ -92,9 +92,14 @@ def main():
         help='render all modes as gifs in addition to svgs')
 
     parser.add_argument(
-        '--parallel',
-        action='store_true',
-        help='try to render modes in parallel')
+        '-j', '--parallel',
+        const=os.cpu_count() or 1,
+        default=None,
+        action='store',
+        nargs='?',
+        type=int,
+        metavar='N',
+        help='enable parallel processing on N processes, default is number of cores if not specified')
 
     parser.add_argument(
         '--print-defaults',
@@ -137,8 +142,10 @@ def main():
         render_gif(args.gif - 1)
     else:
         mode_ids = list(range(len(frequencies)))
-        if args.parallel:
-            with Pool() as pool:
+        if args.parallel and args.parallel > 1:
+            from multiprocessing.pool import Pool
+
+            with Pool(processes=args.parallel) as pool:
                 pool.map(render_svg, mode_ids)
 
                 if args.all_gifs:
