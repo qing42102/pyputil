@@ -50,6 +50,32 @@ def calculate_bonds(structure: Structure, cutoff=1.6):
         image_offsets = np.repeat([[a, b, c]], new_bonds.shape[0], axis=0)
         new_bonds = np.hstack((image_offsets, new_bonds))
 
-        bonds.append(new_bonds[new_bonds[:, 3] != new_bonds[:, 4]])
+        if a == 0 and b == 0 and c == 0:
+            # don't double count
+            bonds.append(new_bonds[new_bonds[:, 3] < new_bonds[:, 4]])
+        else:
+            bonds.append(new_bonds)
 
     return np.vstack(bonds)
+
+
+def calculate_bond_list(structure: Structure, cutoff=1.6):
+    bonds = calculate_bonds(structure=structure, cutoff=cutoff)
+
+    # double count bonds
+    reverse_bonds = np.column_stack((
+        -1 * bonds[:, :3],
+        bonds[:, 4],
+        bonds[:, 3],
+    ))
+    # don't double count bonds that connect to the same atom though
+    reverse_bonds = reverse_bonds[reverse_bonds[:, 4] != reverse_bonds[:, 3]]
+    bonds = np.vstack((bonds, reverse_bonds))
+
+    # sort by first atom index in bond
+    bonds = bonds[np.argsort(bonds[:, 3])]
+
+    # split bonds where the indices change to make a list of bond arrays
+    split_locations = np.diff(bonds[:, 3]).nonzero()[0] + 1
+    return np.split(bonds, split_locations)
+

@@ -36,6 +36,7 @@ if __name__ == "__main__":
         entry_points={
             'console_scripts': [
                 'modeplot = pyputil.bin.modeplot:main',
+                'structure-gen = pyputil.bin.structure_gen:main',
             ]
         }
     )
