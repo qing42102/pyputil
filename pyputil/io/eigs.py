@@ -45,6 +45,9 @@ def from_file(path: str):
         # looks like rsp2 output, so load the dynamical matrix and solve it
         dynmat = scipy.sparse.load_npz(path)
         frequencies, eigs = solve_dynmat(dynmat)
+        # reshape to 3d vectors
+        frequencies = np.asarray(frequencies)
+        eigs = np.asarray(eigs).reshape((len(frequencies), -1, 3))
     else:
         with zopen(path, 'r') as f:
             data = yaml.load(f)
