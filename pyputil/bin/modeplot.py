@@ -5,7 +5,7 @@ from pymatgen import Structure
 import numpy as np
 import typing as tp
 
-from pyputil.io.phonopy import load_eigs_phonopy
+import pyputil.io.eigs
 from pyputil.modeplot import RenderSettings, ModeRenderer
 import argparse
 
@@ -78,7 +78,7 @@ def main():
         metavar='EIGENVECTOR_FILE',
         type=str,
         required=True,
-        help='eigenvalue input file (e.g. band.yaml, qpoints.hdf5)')
+        help='eigenvector input file (e.g. band.yaml, qpoints.hdf5, gamma-dynmat*.npz)')
 
     parser.add_argument(
         '-g', '--gif',
@@ -117,7 +117,7 @@ def main():
         to_unit_cell=True)
 
     # read eigenvectors
-    frequencies, eigs = load_eigs_phonopy(args.eigs)
+    frequencies, eigs = pyputil.io.eigs.from_file(args.eigs)
 
     # make supercell if specified
     if args.supercell is not None:

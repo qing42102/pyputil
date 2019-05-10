@@ -1,14 +1,15 @@
 import gzip
+from pathlib import Path
 
 from ruamel.yaml import YAML
 yaml = YAML(typ='safe')
 
 
-def zopen(filename: str, *args):
-    if filename.endswith(".gz"):
-        return gzip.open(filename, *args)
+def zopen(path: Path, *args):
+    if path.suffix == ".gz":
+        return gzip.open(path, *args)
     else:
-        return open(filename, *args)
+        return path.open(*args)
 
 
 def write_bytes(filename: str, content: bytes):
