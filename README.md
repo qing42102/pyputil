@@ -1,11 +1,12 @@
-# pyputil
+## modeplot
 
 ![Example PNG](https://raw.githubusercontent.com/colin-daniels/pyputil/assets/example.png)
 ![Example GIF](https://raw.githubusercontent.com/colin-daniels/pyputil/assets/example.gif)
 
 ```
 usage: modeplot [-h] [-c CONFIG] [-s N N N] -i STRUCTURE_FILE -e
-                EIGENVECTOR_FILE [-g MODE_ID] [--all-gifs] [--parallel]
+                EIGENVECTOR_FILE [-g MODE_ID] [--all-gifs] [-j [N]]
+                [--print-defaults]
 
 Generate SVG/GIF phonon mode plots from phonopy output.
 
@@ -17,11 +18,15 @@ optional arguments:
   -i STRUCTURE_FILE, --input STRUCTURE_FILE
                         input structure file (e.g. POSCAR, input.cif)
   -e EIGENVECTOR_FILE, --eigs EIGENVECTOR_FILE
-                        eigenvalue input file (e.g. band.yaml, qpoints.hdf5)
+                        eigenvector input file (e.g. band.yaml, qpoints.hdf5,
+                        gamma-dynmat*.npz)
   -g MODE_ID, --gif MODE_ID
                         render a single mode gif
-  --all-gifs            render all mode gifs as well as svgs
-  --parallel            try to render modes in parallel
+  --all-gifs            render all modes as gifs in addition to svgs
+  -j [N], --parallel [N]
+                        enable parallel processing on N processes, default is
+                        number of cores if not specified
+  --print-defaults      print default yaml settings to stdout and exit
 
 ```
 ### Installation
@@ -115,4 +120,36 @@ gif:
   num-frames: 32
   frame-delay: 50
 
+```
+
+## structure-gen
+
+```
+usage: structure-gen [-h] {gnr} ...
+
+Generate various structures, see subcommands for more information
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+subcommands:
+  {gnr}
+    gnr       generate graphene nanoribbons in POSCAR format
+```
+
+### gnr
+
+```
+usage: structure-gen gnr [-h] [-o OUTPUT] -w N [-l M] [-p]
+
+Generate finite GNR structures in POSCAR format.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        output filename, default is finite-
+                        gnr-<width>x<length>.vasp
+  -w N, --width N
+  -l M, --length M
+  -p, --periodic        generate a periodic GNR instead of finite
 ```
