@@ -3,6 +3,7 @@ import json
 import os
 import time
 from dataclasses import field
+from types import SimpleNamespace
 
 import numpy as np
 import scipy.linalg
@@ -29,3 +30,13 @@ def rotation_matrix(axis: np.array, theta: float):
     return scipy.linalg.expm(
         np.cross(np.eye(3), axis / np.linalg.norm(axis)) * theta
     )
+
+
+def accept_dict_args(func):
+    def wrapper(args):
+        if type(args) == dict:
+            return func(SimpleNamespace(**args))
+        else:
+            return func(args)
+
+    return wrapper

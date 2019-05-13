@@ -2,6 +2,8 @@ import argparse
 
 import numpy as np
 
+from pyputil.misc import accept_dict_args
+
 
 def main():
     # create the top-level parser
@@ -37,6 +39,7 @@ def setup_solve_opts(subparsers):
     solve_parser.set_defaults(func=run_solve)
 
 
+@accept_dict_args
 def run_solve(args):
     from pyputil.io.eigs import solve_dynmat
     import scipy.sparse

@@ -6,6 +6,7 @@ import numpy as np
 import typing as tp
 
 import pyputil.io.eigs
+from pyputil.misc import accept_dict_args
 from pyputil.modeplot import RenderSettings, ModeRenderer
 import argparse
 
@@ -111,6 +112,7 @@ def main():
     run(args)
 
 
+@accept_dict_args
 def run(args):
     global renderer
     # settings

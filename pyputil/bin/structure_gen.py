@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from pyputil.misc import accept_dict_args
 from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr
 from pyputil.structure.nanotube import generate_cnt
 
@@ -58,6 +59,7 @@ def setup_gnr_opts(subparsers):
     gnr_parser.set_defaults(func=run_gnr)
 
 
+@accept_dict_args
 def run_gnr(args):
     if not args.periodic and not args.length:
         print("missing --length argument for finite gnr", file=sys.stderr)
@@ -109,6 +111,7 @@ def setup_cnt_opts(subparsers):
     gnr_parser.set_defaults(func=run_cnt)
 
 
+@accept_dict_args
 def run_cnt(args):
     if not args.output:
         args.output = f"cnt-{args.n}x{args.m}.vasp"
