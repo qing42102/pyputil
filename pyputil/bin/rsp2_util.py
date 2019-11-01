@@ -2,8 +2,6 @@ import argparse
 
 import numpy as np
 
-from pyputil.misc import accept_dict_args
-
 
 def main():
     # create the top-level parser
@@ -36,19 +34,18 @@ def setup_solve_opts(subparsers):
                               help="frequency/eigenvector output filename (npz format, uses numpy.savez_compressed)")
 
     # set function to be run if we select this subcommand
-    solve_parser.set_defaults(func=run_solve)
+    solve_parser.set_defaults(func=lambda args: run_solve(vars(args)))
 
 
-@accept_dict_args
 def run_solve(args):
     from pyputil.io.eigs import solve_dynmat
     import scipy.sparse
 
-    dynmat = scipy.sparse.load_npz(args.DYNMAT)
+    dynmat = scipy.sparse.load_npz(args["DYNMAT"])
     evals, evecs = solve_dynmat(dynmat)
 
     np.savez_compressed(
-        args.output,
+        args["output"],
         frequencies=evals,
         eigenvectors=evecs)
 

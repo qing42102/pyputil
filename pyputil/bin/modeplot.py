@@ -6,7 +6,6 @@ import numpy as np
 import typing as tp
 
 import pyputil.io.eigs
-from pyputil.misc import accept_dict_args
 from pyputil.modeplot import RenderSettings, ModeRenderer
 import argparse
 
@@ -109,27 +108,26 @@ def main():
         help='print default yaml settings to stdout and exit')
 
     args = parser.parse_args()
-    run(args)
+    run(vars(args))
 
 
-@accept_dict_args
 def run(args):
     global renderer
     # settings
-    settings = RenderSettings.from_file_or_default(args.config)
+    settings = RenderSettings.from_file_or_default(args["config"])
     # read structure
-    structure = Structure.from_file(args.input)
+    structure = Structure.from_file(args["input"])
     # initial translation
     structure.translate_sites(
         np.arange(structure.num_sites),
         np.array(settings.translation, dtype=float),
         to_unit_cell=True)
     # read eigenvectors
-    frequencies, eigs = pyputil.io.eigs.from_file(args.eigs)
+    frequencies, eigs = pyputil.io.eigs.from_file(args["eigs"])
     # make supercell if specified
-    if args.supercell is not None:
-        supercell_images = np.prod(args.supercell)
-        structure.make_supercell(args.supercell)
+    if args["supercell"] is not None:
+        supercell_images = np.prod(args["supercell"])
+        structure.make_supercell(args["supercell"])
         eigs = np.repeat(eigs, supercell_images, axis=1)
     renderer = ModeRenderer(
         structure=structure,
@@ -137,23 +135,23 @@ def run(args):
         eigenvectors=eigs,
         settings=settings,
     )
-    if args.gif:
-        assert 0 < args.gif <= len(renderer.frequencies)
-        render_gif(args.gif - 1)
+    if args["gif"]:
+        assert 0 < args["gif"] <= len(renderer.frequencies)
+        render_gif(args["gif"] - 1)
     else:
         mode_ids = list(range(len(frequencies)))
-        if args.parallel and args.parallel > 1:
+        if args["parallel"] and args["parallel"] > 1:
             from multiprocessing.pool import Pool
 
-            with Pool(processes=args.parallel) as pool:
+            with Pool(processes=args["parallel"]) as pool:
                 pool.map(render_svg, mode_ids)
 
-                if args.all_gifs:
+                if args["all_gifs"]:
                     pool.map(render_gif, mode_ids)
         else:
             render_svg(mode_ids)
 
-            if args.all_gifs:
+            if args["all_gifs"]:
                 render_gif(mode_ids)
 
 

@@ -1,7 +1,6 @@
 import argparse
 import sys
 
-from pyputil.misc import accept_dict_args
 from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr, \
     generate_periodic_zgnr
 from pyputil.structure.nanotube import generate_cnt
@@ -68,41 +67,40 @@ def setup_gnr_opts(subparsers):
         help='generate a ZGNR instead of AGNR, currently limited to periodic')
 
     # set function to be run if we select this subcommand
-    gnr_parser.set_defaults(func=run_gnr)
+    gnr_parser.set_defaults(func=lambda args: run_gnr(vars(args)))
 
 
-@accept_dict_args
 def run_gnr(args):
-    if not args.periodic and not args.length:
+    if not args["periodic"] and not args["length"]:
         print("missing --length argument for finite gnr", file=sys.stderr)
         sys.exit(1)
-    elif args.periodic:
-        if args.zigzag:
+    elif args["periodic"]:
+        if args["zigzag"]:
             name = "z"
             func = generate_periodic_zgnr
         else:
             name = "a"
             func = generate_periodic_agnr
 
-        if not args.output:
-            args.output = f"periodic-{name}gnr-{args.width}.vasp"
+        if not args["output"]:
+            args["output"] = f"periodic-{name}gnr-{args['width']}.vasp"
 
-        gnr = func(args.width, hydrogen=not args.no_hydrogen)
-        if args.length:
-            gnr.make_supercell([args.length, 1, 1])
+        gnr = func(args["width"], hydrogen=not args["no_hydrogen"])
+        if args["length"]:
+            gnr.make_supercell([args["length"], 1, 1])
 
-        gnr.to(filename=args.output, fmt="poscar")
+        gnr.to(filename=args["output"], fmt="poscar")
     else:
-        if args.zigzag:
+        if args["zigzag"]:
             print("only periodic zigzag GNR generation is supported",
                   file=sys.stderr)
             sys.exit(1)
 
-        if not args.output:
-            args.output = f"finite-gnr-{args.width}x{args.length}.vasp"
+        if not args["output"]:
+            args["output"] = f"finite-gnr-{args['width']}x{args['length']}.vasp"
 
-        gnr = generate_finite_agnr(args.width, args.length, hydrogen=not args.no_hydrogen)
-        gnr.to(filename=args.output, fmt="poscar")
+        gnr = generate_finite_agnr(args["width"], args["length"], hydrogen=not args["no_hydrogen"])
+        gnr.to(filename=args["output"], fmt="poscar")
 
 
 def setup_flake_opts(subparsers):
@@ -124,16 +122,15 @@ def setup_flake_opts(subparsers):
         type=float,
         required=True)
 
-    gnr_parser.set_defaults(func=run_flake)
+    gnr_parser.set_defaults(func=lambda args: run_flake(vars(args)))
 
 
-@accept_dict_args
 def run_flake(args):
     from pyputil.structure.flake import generate_graphene_flakes
-    [a, b, c] = generate_graphene_flakes(args.radius)
-    a.to(filename=f"{args.output}-a.vasp", fmt="poscar")
-    b.to(filename=f"{args.output}-b.vasp", fmt="poscar")
-    c.to(filename=f"{args.output}-c.vasp", fmt="poscar")
+    [a, b, c] = generate_graphene_flakes(args["radius"])
+    a.to(filename=f"{args['output']}-a.vasp", fmt="poscar")
+    b.to(filename=f"{args['output']}-b.vasp", fmt="poscar")
+    c.to(filename=f"{args['output']}-c.vasp", fmt="poscar")
         
 
 def setup_cnt_opts(subparsers):
@@ -163,16 +160,19 @@ def setup_cnt_opts(subparsers):
         help='chirality',
         required=True)
 
-    gnr_parser.set_defaults(func=run_cnt)
+    gnr_parser.set_defaults(func=lambda args: run_cnt(vars(args)))
 
 
-@accept_dict_args
 def run_cnt(args):
-    if not args.output:
-        args.output = f"cnt-{args.n}x{args.m}.vasp"
+    n = args["n"]
+    m = args["m"]
+    output = args["output"]
 
-    cnt = generate_cnt(args.n, args.m)
-    cnt.to(filename=args.output, fmt="poscar")
+    if not output:
+        output = f"cnt-{n}x{m}.vasp"
+
+    cnt = generate_cnt(n, m)
+    cnt.to(filename=output, fmt="poscar")
 
 
 if __name__ == '__main__':
