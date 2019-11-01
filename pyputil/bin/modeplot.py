@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import PurePath
 
 from pymatgen import Structure
 import numpy as np
@@ -12,26 +13,34 @@ import argparse
 from pyputil.svg import write_svg_gif
 
 
-def render_svg(mode_ids: tp.Union[int, tp.List[int]]):
-    if type(mode_ids) == list:
-        for m in mode_ids:
+def render_svg(
+        info: tp.Union[tp.Tuple[int, str], tp.List[tp.Tuple[int, str]]]
+):
+    if type(info) == list:
+        for m in info:
             render_svg(m)
     else:
-        filename = f'mode_{mode_ids + 1}.svg'
-        mode_svg = renderer.render(mode_ids)
+        mode_id, filename = info
+        filename = filename + ".svg"
+
+        mode_svg = renderer.render(mode_id)
         mode_svg.write(filename)
         print(filename)
 
 
-def render_gif(mode_ids: tp.Union[int, tp.List[int]]):
-    if type(mode_ids) == list:
-        for m in mode_ids:
+def render_gif(
+        info: tp.Union[tp.Tuple[int, str], tp.List[tp.Tuple[int, str]]]
+):
+    if type(info) == list:
+        for m in info:
             render_gif(m)
     else:
-        filename = f'mode_{mode_ids + 1}.gif'
+        mode_id, filename = info
+        filename = filename + ".gif"
+
         write_svg_gif(
             filename,
-            renderer.render_mode_anim(mode_ids),
+            renderer.render_mode_anim(mode_id),
             duration=renderer.settings.gif['frame-delay'],
         )
         print(filename)
@@ -81,6 +90,14 @@ def main():
         help='eigenvector input file (e.g. band.yaml, qpoints.hdf5, gamma-dynmat*.npz)')
 
     parser.add_argument(
+        '-o', '--output',
+        metavar='DIR',
+        type=str,
+        required=False,
+        default=None,
+        help='output directory, default is the current directory')
+
+    parser.add_argument(
         '-g', '--gif',
         metavar='MODE_ID',
         type=int,
@@ -115,44 +132,62 @@ def run(args):
     global renderer
     # settings
     settings = RenderSettings.from_file_or_default(args["config"])
+
     # read structure
     structure = Structure.from_file(args["input"])
+
     # initial translation
     structure.translate_sites(
         np.arange(structure.num_sites),
         np.array(settings.translation, dtype=float),
         to_unit_cell=True)
+
     # read eigenvectors
     frequencies, eigs = pyputil.io.eigs.from_file(args["eigs"])
+
     # make supercell if specified
     if args["supercell"] is not None:
         supercell_images = np.prod(args["supercell"])
         structure.make_supercell(args["supercell"])
         eigs = np.repeat(eigs, supercell_images, axis=1)
+
     renderer = ModeRenderer(
         structure=structure,
         frequencies=frequencies,
         eigenvectors=eigs,
         settings=settings,
     )
+
+    output = PurePath(os.getcwd())
+    if args["output"]:
+        output = PurePath(args["output"])
+
     if args["gif"]:
-        assert 0 < args["gif"] <= len(renderer.frequencies)
-        render_gif(args["gif"] - 1)
+        mode_id = args["gif"]
+        assert 0 < mode_id <= len(renderer.frequencies)
+        render_gif((
+            mode_id - 1,
+            str(output / f"mode_{mode_id}")
+        ))
     else:
-        mode_ids = list(range(len(frequencies)))
+        modes = [
+            (idx, str(output / f"mode_{idx + 1}"))
+            for idx in range(len(frequencies))
+        ]
+
         if args["parallel"] and args["parallel"] > 1:
             from multiprocessing.pool import Pool
 
             with Pool(processes=args["parallel"]) as pool:
-                pool.map(render_svg, mode_ids)
+                pool.map(render_svg, modes)
 
                 if args["all_gifs"]:
-                    pool.map(render_gif, mode_ids)
+                    pool.map(render_gif, modes)
         else:
-            render_svg(mode_ids)
+            render_svg(modes)
 
             if args["all_gifs"]:
-                render_gif(mode_ids)
+                render_gif(modes)
 
 
 if __name__ == '__main__':

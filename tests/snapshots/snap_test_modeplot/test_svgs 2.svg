@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" height="248.6" version="1.1" viewBox="263.5 212.9 268.5 248.6" width="268.5" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path d="M -1 0 h 2 l -1 1.732 z" fill="#EB1923" id="arrowhead" stroke-width="0" transform="scale(5.629499999999999)"/>
+  </defs>
+  <rect fill="#FFFFFF" height="248.6" id="background" width="268.5" x="263.5" y="212.9"/>
+  <text font-family="monospace" font-size="15.0" font-weight="bold" id="mode-info" x="268.5" y="456.6">id: 20 | frequency: 1006.7020 cm^-1</text>
+  <g id="bonds" stroke="#7F8285" stroke-width="3.7529999999999997">
+    <path d="M 377.0 301.2 418.6 301.2"/>
+    <path d="M 377.0 301.2 356.2 337.2"/>
+    <path d="M 377.0 301.2 360.7 272.9"/>
+    <path d="M 377.0 373.2 418.6 373.2"/>
+    <path d="M 377.0 373.2 356.2 337.2"/>
+    <path d="M 377.0 373.2 360.7 401.6"/>
+    <path d="M 418.6 301.2 439.4 337.2"/>
+    <path d="M 418.6 301.2 434.9 272.9"/>
+    <path d="M 418.6 373.2 439.4 337.2"/>
+    <path d="M 418.6 373.2 434.9 401.6"/>
+    <path d="M 356.2 337.2 323.5 337.2"/>
+    <path d="M 439.4 337.2 472.1 337.2"/>
+  </g>
+  <g id="displacements" stroke="#EB1923" stroke-width="3.7529999999999997">
+    <path d="M 377.0 301.2 367.9 285.4"/>
+    <use transform="rotate(-210.0 367.9 285.4)" x="367.9" y="285.4" xlink:href="#arrowhead"/>
+    <path d="M 377.0 373.2 367.9 389.0"/>
+    <use transform="rotate(30.0 367.9 389.0)" x="367.9" y="389.0" xlink:href="#arrowhead"/>
+    <path d="M 418.6 301.2 427.7 285.4"/>
+    <use transform="rotate(-150.0 427.7 285.4)" x="427.7" y="285.4" xlink:href="#arrowhead"/>
+    <path d="M 418.6 373.2 427.7 389.0"/>
+    <use transform="rotate(-30.0 427.7 389.0)" x="427.7" y="389.0" xlink:href="#arrowhead"/>
+    <path d="M 356.2 337.2 338.0 337.2"/>
+    <use transform="rotate(-270.0 338.0 337.2)" x="338.0" y="337.2" xlink:href="#arrowhead"/>
+    <path d="M 439.4 337.2 457.6 337.2"/>
+    <use transform="rotate(-90.0 457.6 337.2)" x="457.6" y="337.2" xlink:href="#arrowhead"/>
+    <path d="M 360.7 272.9 350.2 254.7"/>
+    <use transform="rotate(-210.0 350.2 254.7)" x="350.2" y="254.7" xlink:href="#arrowhead"/>
+    <path d="M 360.7 401.6 350.2 419.7"/>
+    <use transform="rotate(30.0 350.2 419.7)" x="350.2" y="419.7" xlink:href="#arrowhead"/>
+    <path d="M 434.9 272.9 445.4 254.7"/>
+    <use transform="rotate(-150.0 445.4 254.7)" x="445.4" y="254.7" xlink:href="#arrowhead"/>
+    <path d="M 434.9 401.6 445.4 419.7"/>
+    <use transform="rotate(-30.0 445.4 419.7)" x="445.4" y="419.7" xlink:href="#arrowhead"/>
+    <path d="M 323.5 337.2 302.5 337.2"/>
+    <use transform="rotate(-270.0 302.5 337.2)" x="302.5" y="337.2" xlink:href="#arrowhead"/>
+    <path d="M 472.1 337.2 493.1 337.2"/>
+    <use transform="rotate(-90.0 493.1 337.2)" x="493.1" y="337.2" xlink:href="#arrowhead"/>
+  </g>
+  <g id="atoms">
+    <g fill="#111417" id="c-atoms" stroke="#111417" stroke-width="2.5020000000000002">
+      <circle cx="377.0" cy="301.2" r="7.821"/>
+      <circle cx="377.0" cy="373.2" r="7.821"/>
+      <circle cx="418.6" cy="301.2" r="7.821"/>
+      <circle cx="418.6" cy="373.2" r="7.821"/>
+      <circle cx="356.2" cy="337.2" r="7.821"/>
+      <circle cx="439.4" cy="337.2" r="7.821"/>
+    </g>
+    <g fill="#FFFFFF" id="h-atoms" stroke="#111417" stroke-width="2.5020000000000002">
+      <circle cx="360.7" cy="272.9" r="5.007"/>
+      <circle cx="360.7" cy="401.6" r="5.007"/>
+      <circle cx="434.9" cy="272.9" r="5.007"/>
+      <circle cx="434.9" cy="401.6" r="5.007"/>
+      <circle cx="323.5" cy="337.2" r="5.007"/>
+      <circle cx="472.1" cy="337.2" r="5.007"/>
+    </g>
+  </g>
+</svg>

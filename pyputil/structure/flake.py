@@ -85,7 +85,7 @@ def generate_graphene_flakes(
         bond_dist: float = DEFAULT_CC_DIST,
         vacuum_sep: float = 15,
 ) -> [Structure]:
-    def process_structure(s):
+    def process_structure(s: Structure):
         # kill off any lone carbons or those with only 1 bond
         from pyputil.structure.bonds import calculate_bond_list
         n_bonds = np.array([len(b) for b in calculate_bond_list(s)])
