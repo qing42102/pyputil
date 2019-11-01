@@ -79,5 +79,18 @@ def calculate_bond_list(structure: Structure, cutoff: float = 1.15 * DEFAULT_CC_
 
     # split bonds where the indices change to make a list of bond arrays
     split_locations = np.diff(bonds[:, 3]).nonzero()[0] + 1
-    return np.split(bonds, split_locations)
+
+    # include rows for atoms with no bonds
+    def all_bonds():
+        idx = 0
+        for atom_bonds in np.split(bonds, split_locations):
+            next_idx = atom_bonds[0, 3]
+            while idx != next_idx:
+                yield np.zeros(shape=(0, 5), dtype=np.int64)
+                idx += 1
+
+            yield atom_bonds
+            idx += 1
+
+    return list(all_bonds())
 

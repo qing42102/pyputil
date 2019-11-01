@@ -2,6 +2,7 @@ import typing as tp
 import numpy as np
 from pymatgen import Structure, Element, Lattice
 
+from pyputil.structure.constants import DEFAULT_CH_DIST, DEFAULT_CC_DIST
 from pyputil.structure.bonds import calculate_bond_list, bonds_to_positions
 
 
@@ -109,4 +110,44 @@ def remove_random_carbon(structure: Structure) -> Structure:
     to_remove = np.random.randint(len(carbon_indices))
 
     structure.remove_sites([to_remove])
+    return structure
+
+
+# note: adds hydrogen to the edges at the end
+def add_vacancy_defects(
+        pristine: Structure,
+        defect_percent: float,
+        cutoff: float = 1.1 * DEFAULT_CC_DIST,
+) -> Structure:
+    structure = pristine.copy()
+
+    def should_add_defect():
+        return np.random.rand() < defect_percent
+
+    # basically just go through and try to remove carbon atoms
+    structure.remove_sites([
+        idx for idx, s in enumerate(structure.species)
+        if s == Element.C and should_add_defect()
+    ])
+
+    # remove lone atoms (based on # of carbon neighbors)
+    while True:
+        species = structure.species
+        to_remove = []
+        for idx, bonds in enumerate(calculate_bond_list(structure=structure, cutoff=cutoff)):
+            num_carbon_neighbors = np.sum(
+                1 for b in bonds[:, 4]
+                if species[b] == Element.C
+            )
+            if num_carbon_neighbors == 0:
+                to_remove.append(idx)
+
+        if len(to_remove) == 0:
+            break
+        else:
+            structure.remove_sites(to_remove)
+
+    # make sure to add hydrogen back to the edges when done though
+    add_hydrogen(structure, cutoff, dist=DEFAULT_CH_DIST)
+
     return structure

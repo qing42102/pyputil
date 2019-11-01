@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from pyputil.structure import add_vacancy_defects
 from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr, \
     generate_periodic_zgnr
 from pyputil.structure.nanotube import generate_cnt
@@ -17,6 +18,7 @@ def main():
     setup_gnr_opts(subparsers)
     setup_cnt_opts(subparsers)
     setup_flake_opts(subparsers)
+    setup_add_defects_opts(subparsers)
 
     # error if no subcommand
     parser.set_defaults(func=lambda _: parser.error("missing subcommand"))
@@ -104,25 +106,24 @@ def run_gnr(args):
 
 
 def setup_flake_opts(subparsers):
-    # gnr options
-    gnr_parser = subparsers.add_parser(
+    parser = subparsers.add_parser(
         'flake',
         help='generate circular graphene flakes in POSCAR format',
         description='Generate graphene flake structures in POSCAR format.')
 
-    gnr_parser.add_argument(
+    parser.add_argument(
         '-o', '--output',
         type=str,
         required=True,
         help='output prefix')
 
-    gnr_parser.add_argument(
+    parser.add_argument(
         '-r', '--radius',
         metavar='RADIUS',
         type=float,
         required=True)
 
-    gnr_parser.set_defaults(func=lambda args: run_flake(vars(args)))
+    parser.set_defaults(func=lambda args: run_flake(vars(args)))
 
 
 def run_flake(args):
@@ -135,32 +136,32 @@ def run_flake(args):
 
 def setup_cnt_opts(subparsers):
     # gnr options
-    gnr_parser = subparsers.add_parser(
+    parser = subparsers.add_parser(
         'cnt',
         help='generate carbon nanotubes in POSCAR format',
         description='Generate carbon nanotube structures in POSCAR format.')
 
-    gnr_parser.add_argument(
+    parser.add_argument(
         '-o', '--output',
         type=str,
         required=False,
         help='output filename, default is cnt-<n>x<m>.vasp')
 
-    gnr_parser.add_argument(
+    parser.add_argument(
         '-n',
         metavar='N',
         type=int,
         help='chirality',
         required=True)
 
-    gnr_parser.add_argument(
+    parser.add_argument(
         '-m',
         metavar='M',
         type=int,
         help='chirality',
         required=True)
 
-    gnr_parser.set_defaults(func=lambda args: run_cnt(vars(args)))
+    parser.set_defaults(func=lambda args: run_cnt(vars(args)))
 
 
 def run_cnt(args):
@@ -173,6 +174,58 @@ def run_cnt(args):
 
     cnt = generate_cnt(n, m)
     cnt.to(filename=output, fmt="poscar")
+
+
+def setup_add_defects_opts(subparsers):
+    # gnr options
+    parser = subparsers.add_parser(
+        'add_defects',
+        help='add vacancy defects to structures in POSCAR format',
+        description='Add random vacancy defects to carbon structures in POSCAR format.')
+
+    parser.add_argument(
+        '-o', '--output-prefix',
+        type=str,
+        default="defective",
+        metavar='PREFIX',
+        help='output *prefix*, default is "defective", full paths are "<prefix>-N.vasp".')
+
+    parser.add_argument(
+        '-p', "--defect-percent",
+        metavar='P',
+        type=float,
+        help='percent chance for a carbon atom to be removed',
+        required=True)
+
+    parser.add_argument(
+        '-n', "--num-structures",
+        metavar='N',
+        type=int,
+        help='number of randomly-defected structures to generate from the input',
+        required=True)
+
+    parser.add_argument(
+        '-i', '--input',
+        type=str,
+        required=True,
+        help='input filename for the structure that will have defects added')
+
+    parser.set_defaults(func=lambda args: run_add_defects(vars(args)))
+
+
+def run_add_defects(args):
+    from pymatgen import Structure
+
+    # read original structure
+    pristine = Structure.from_file(args["input"])
+
+    defect_probability = args["defect_percent"] / 100.0
+    prefix = args["output_prefix"]
+
+    for n in range(args["num_structures"]):
+        output = f"{prefix}-{n}.vasp"
+        defective = add_vacancy_defects(pristine, defect_probability)
+        defective.to(filename=output, fmt="poscar")
 
 
 if __name__ == '__main__':
