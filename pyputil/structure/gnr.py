@@ -3,82 +3,9 @@ import typing as tp
 import numpy as np
 from pymatgen import Structure, Lattice, Element
 
-from pyputil.structure.bonds import bonds_to_positions, \
-    calculate_bond_list
-
-
-def calc_hydrogen_loc(
-        a: np.array,
-        delta_ab: np.array,
-        delta_ac: np.array,
-        dist: float = 0.75
-) -> np.array:
-    direction = -(delta_ab + delta_ac) / 2
-    direction *= dist / np.linalg.norm(direction)
-    return a + direction
-
-
-def add_hydrogen(structure: Structure, cutoff: float = 1.05):
-    all_bonds = calculate_bond_list(structure=structure, cutoff=cutoff)
-
-    lattice = np.copy(structure.lattice.matrix)
-    coords = np.copy(structure.cart_coords)
-
-    for bonds in all_bonds:
-        # only add hydrogen to atoms with two neighbors
-        if len(bonds) != 2:
-            continue
-
-        bond_pos = bonds_to_positions(bonds, lattice, coords)
-        a, b = bond_pos[0]
-        _, c = bond_pos[1]
-        structure.append(
-            species=Element.H,
-            coords=calc_hydrogen_loc(a, b - a, c - a),
-            coords_are_cartesian=True,
-        )
-
-
-def add_vacuum_sep(
-        structure: Structure,
-        vx: tp.Optional[float] = None,
-        vy: tp.Optional[float] = None,
-        vz: tp.Optional[float] = None,
-) -> Structure:
-    pos_min = np.min(structure.cart_coords, axis=0)
-    pos_max = np.max(structure.cart_coords, axis=0)
-    pos_range = pos_max - pos_min
-
-    new_lattice = np.copy(structure.lattice.matrix)
-    for i, vsep in enumerate([vx, vy, vz]):
-        if vsep is None:
-            continue
-
-        # current lattice vector should be orthogonal
-        assert new_lattice[i, i] != 0
-        assert new_lattice[i, (i + 1) % 3] == 0
-        assert new_lattice[i, (i + 2) % 3] == 0
-
-        new_lattice[i, i] = vsep + pos_range[i]
-
-    return Structure(
-        lattice=Lattice(matrix=new_lattice),
-        species=structure.species,
-        coords=structure.cart_coords,
-        coords_are_cartesian=True,
-    )
-
-
-def center_structure(structure: Structure) -> Structure:
-    structure = structure.copy()
-    avg_pos = np.average(structure.frac_coords, axis=0)
-    structure.translate_sites(
-        np.arange(0, structure.num_sites),
-        np.array([0.5, 0.5, 0.5]) - avg_pos,
-        frac_coords=True,
-        to_unit_cell=True,
-    )
-    return structure
+from pyputil.structure import add_hydrogen, add_vacuum_sep, center_structure
+from pyputil.structure.constants import DEFAULT_CC_DIST, DEFAULT_CH_DIST
+from pyputil.structure.bonds import calculate_bond_list
 
 
 def agnr_unit_cell(vacuum_sep: float = 10) -> Structure:
@@ -104,9 +31,32 @@ def agnr_unit_cell(vacuum_sep: float = 10) -> Structure:
     )
 
 
+def zgnr_unit_cell(vacuum_sep: float = 10) -> Structure:
+    return Structure(
+        lattice=Lattice([
+            [np.sqrt(3), 0, 0],
+            [0, 3, 0],
+            [0, 0, vacuum_sep],
+        ]),
+        species=[
+            Element.C,
+            Element.C,
+            Element.C,
+            Element.C,
+        ],
+        coords=np.array([
+            [0, 0.5, 0],
+            [0, 1.5, 0],
+            [np.sqrt(3) / 2, 0.0, 0],
+            [np.sqrt(3) / 2, 2.0, 0],
+        ]) + np.array([np.sqrt(3) / 4, 0.5, vacuum_sep / 2]),
+        coords_are_cartesian=True,
+    )
+
+
 def generate_periodic_agnr(
         width_n: int,
-        bond_dist: float = 1.44,
+        bond_dist: float = DEFAULT_CC_DIST,
         vacuum_sep: float = 15,
         hydrogen: bool = True,
 ):
@@ -130,11 +80,45 @@ def generate_periodic_agnr(
     # center new structure
     cell = center_structure(cell)
     if hydrogen:
-        add_hydrogen(cell)
+        add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
 
     # scale to bond distances
     cell.lattice = Lattice(matrix=cell.lattice.matrix * bond_dist)
     return cell
+
+
+def generate_periodic_zgnr(
+        width_n: int,
+        bond_dist: float = DEFAULT_CC_DIST,
+        vacuum_sep: float = 15,
+        hydrogen: bool = True,
+):
+    assert width_n > 0
+
+    # put vacuum separation in terms of the bond distance
+    vacuum_sep /= bond_dist
+
+    cell = zgnr_unit_cell(vacuum_sep=vacuum_sep)
+    cell.make_supercell([1, width_n // 2 + 1, 1])
+    if width_n % 2 == 0:
+        # need to remove the two topmost atoms
+        cell.remove_sites(
+            np.argsort(cell.cart_coords[:, 1])[-2:]
+        )
+
+    # add vacuum separation
+    cell = add_vacuum_sep(cell, vy=vacuum_sep, vz=vacuum_sep)
+    # center new structure
+    cell = center_structure(cell)
+    if hydrogen:
+        add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
+
+    # scale to bond distances
+    return Structure(
+        lattice=Lattice(matrix=cell.lattice.matrix * bond_dist),
+        species=cell.species,
+        coords=cell.frac_coords,
+    )
 
 
 def _generate_finite_agnr_from_periodic(
@@ -167,7 +151,7 @@ def _generate_finite_agnr_from_periodic(
     cell.remove_sites(np.where(n_bonds <= 1)[0])
 
     if hydrogen:
-        add_hydrogen(cell)
+        add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
 
     # scale to bond distances
     cell.lattice = Lattice(matrix=cell.lattice.matrix * bond_dist)
@@ -177,7 +161,7 @@ def _generate_finite_agnr_from_periodic(
 def generate_finite_agnr(
         width_n: int,
         length_m: tp.Union[tp.Iterable[int], int],
-        bond_dist: float = 1.44,
+        bond_dist: float = DEFAULT_CC_DIST,
         vacuum_sep: float = 15,
         hydrogen: bool = True,
 ):

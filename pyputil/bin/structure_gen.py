@@ -2,7 +2,8 @@ import argparse
 import sys
 
 from pyputil.misc import accept_dict_args
-from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr
+from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr, \
+    generate_periodic_zgnr
 from pyputil.structure.nanotube import generate_cnt
 
 
@@ -16,6 +17,7 @@ def main():
     subparsers = parser.add_subparsers(title="subcommands")
     setup_gnr_opts(subparsers)
     setup_cnt_opts(subparsers)
+    setup_flake_opts(subparsers)
 
     # error if no subcommand
     parser.set_defaults(func=lambda _: parser.error("missing subcommand"))
@@ -51,9 +53,19 @@ def setup_gnr_opts(subparsers):
         default=None)
 
     gnr_parser.add_argument(
+        '--no-hydrogen',
+        action='store_true',
+        help='don\'t hydrogenate edges')
+
+    gnr_parser.add_argument(
         '-p', '--periodic',
         action='store_true',
         help='generate a periodic GNR instead of finite')
+
+    gnr_parser.add_argument(
+        '-z', '--zigzag',
+        action='store_true',
+        help='generate a ZGNR instead of AGNR, currently limited to periodic')
 
     # set function to be run if we select this subcommand
     gnr_parser.set_defaults(func=run_gnr)
@@ -65,21 +77,64 @@ def run_gnr(args):
         print("missing --length argument for finite gnr", file=sys.stderr)
         sys.exit(1)
     elif args.periodic:
-        if not args.output:
-            args.output = f"periodic-agnr-{args.width}.vasp"
+        if args.zigzag:
+            name = "z"
+            func = generate_periodic_zgnr
+        else:
+            name = "a"
+            func = generate_periodic_agnr
 
-        gnr = generate_periodic_agnr(args.width)
+        if not args.output:
+            args.output = f"periodic-{name}gnr-{args.width}.vasp"
+
+        gnr = func(args.width, hydrogen=not args.no_hydrogen)
         if args.length:
             gnr.make_supercell([args.length, 1, 1])
 
         gnr.to(filename=args.output, fmt="poscar")
     else:
+        if args.zigzag:
+            print("only periodic zigzag GNR generation is supported",
+                  file=sys.stderr)
+            sys.exit(1)
+
         if not args.output:
             args.output = f"finite-gnr-{args.width}x{args.length}.vasp"
 
-        gnr = generate_finite_agnr(args.width, args.length)
+        gnr = generate_finite_agnr(args.width, args.length, hydrogen=not args.no_hydrogen)
         gnr.to(filename=args.output, fmt="poscar")
 
+
+def setup_flake_opts(subparsers):
+    # gnr options
+    gnr_parser = subparsers.add_parser(
+        'flake',
+        help='generate circular graphene flakes in POSCAR format',
+        description='Generate graphene flake structures in POSCAR format.')
+
+    gnr_parser.add_argument(
+        '-o', '--output',
+        type=str,
+        required=True,
+        help='output prefix')
+
+    gnr_parser.add_argument(
+        '-r', '--radius',
+        metavar='RADIUS',
+        type=float,
+        required=True)
+
+    gnr_parser.set_defaults(func=run_flake)
+
+
+@accept_dict_args
+def run_flake(args):
+    from pyputil.structure.flake import generate_graphene_flakes
+    [a, b, c] = generate_graphene_flakes(args.radius)
+    a.to(filename=f"{args.output}-a.vasp", fmt="poscar")
+    b.to(filename=f"{args.output}-b.vasp", fmt="poscar")
+    c.to(filename=f"{args.output}-c.vasp", fmt="poscar")
+        
 
 def setup_cnt_opts(subparsers):
     # gnr options

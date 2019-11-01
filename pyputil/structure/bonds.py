@@ -4,6 +4,8 @@ import numpy as np
 import scipy.spatial
 from pymatgen import Structure
 
+from pyputil.structure.constants import DEFAULT_CC_DIST
+
 
 def bond_to_positions(bond: np.array, lattice, cart_coords):
     # lattice input should be each lattice vector as a row
@@ -18,7 +20,7 @@ def bonds_to_positions(bonds: np.array, lattice, cart_coords):
     return np.hstack((pos_a, pos_b)).reshape((-1, 2, 3))
 
 
-def calculate_bonds(structure: Structure, cutoff=1.6):
+def calculate_bonds(structure: Structure, cutoff: float = 1.15 * DEFAULT_CC_DIST):
     # just make a huge system to avoid periodicity edge cases
     lattice = structure.lattice.matrix
     vecs = [lattice[1], lattice[2], lattice[0]]
@@ -59,7 +61,7 @@ def calculate_bonds(structure: Structure, cutoff=1.6):
     return np.vstack(bonds)
 
 
-def calculate_bond_list(structure: Structure, cutoff=1.6):
+def calculate_bond_list(structure: Structure, cutoff: float = 1.15 * DEFAULT_CC_DIST):
     bonds = calculate_bonds(structure=structure, cutoff=cutoff)
 
     # double count bonds
