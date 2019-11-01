@@ -132,7 +132,7 @@ def run_flake(args):
     a.to(filename=f"{args['output']}-a.vasp", fmt="poscar")
     b.to(filename=f"{args['output']}-b.vasp", fmt="poscar")
     c.to(filename=f"{args['output']}-c.vasp", fmt="poscar")
-        
+
 
 def setup_cnt_opts(subparsers):
     # gnr options

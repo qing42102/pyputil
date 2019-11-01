@@ -119,7 +119,7 @@ class ModeRenderer:
 
         self.structure = structure
         self.transform = settings.scaling * \
-                         np.array(settings.rotation).astype(float)
+            np.array(settings.rotation).astype(float)
 
         self.bonds = calculate_bonds(structure)
         if not self.settings.bonds['draw-periodic']:

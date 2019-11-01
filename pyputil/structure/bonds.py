@@ -93,4 +93,3 @@ def calculate_bond_list(structure: Structure, cutoff: float = 1.15 * DEFAULT_CC_
             idx += 1
 
     return list(all_bonds())
-

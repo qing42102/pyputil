@@ -34,4 +34,3 @@ def test_gif(snapshot, datadir):
 
     output = str(datadir.join("mode_3.gif"))
     snapshot.assert_match(FileSnapshot(output))
-
