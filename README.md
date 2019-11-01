@@ -1,4 +1,5 @@
 ## modeplot
+![](https://github.com/colin-daniels/pyputil/workflows/Python%20application/badge.svg)
 
 ![Example PNG](https://raw.githubusercontent.com/colin-daniels/pyputil/assets/example.png)
 ![Example GIF](https://raw.githubusercontent.com/colin-daniels/pyputil/assets/example.gif)
@@ -30,7 +31,9 @@ optional arguments:
 
 ```
 ### Installation
-First install the dependencies via pip by navigating to the pyputil folder and then installing pyputil itself 
+First install the dependencies via pip by navigating to the pyputil folder and then installing pyputil itself. Note that
+you may have to install `numpy` first (e.g. via `python3 -m pip install -r <(grep numpy requirements.txt)`) due to an issue
+with the phonopy requirement.
 ```bash
 # install dependencies
 python3 -m pip install -r requirements.txt
