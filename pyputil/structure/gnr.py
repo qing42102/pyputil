@@ -94,6 +94,8 @@ def generate_periodic_zgnr(
         hydrogen: bool = True,
 ):
     assert width_n > 0
+    # the way we count is a bit off, so subtract one here to fix it
+    width_n -= 1
 
     # put vacuum separation in terms of the bond distance
     vacuum_sep /= bond_dist
