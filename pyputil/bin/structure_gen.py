@@ -1,10 +1,13 @@
 import argparse
 import sys
+import os
 
-from pyputil.structure import add_vacancy_defects
+from pyputil.structure import add_vacancy_defects, add_hydrogen
 from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr, \
-    generate_periodic_zgnr
+    generate_periodic_zgnr, edge_types
 from pyputil.structure.nanotube import generate_cnt
+from pyputil.structure.constants import DEFAULT_CC_DIST, DEFAULT_CH_DIST
+from pymatgen import Structure, Lattice, Element
 
 
 def main():
@@ -86,12 +89,22 @@ def run_gnr(args):
 
         if not args["output"]:
             args["output"] = f"periodic-{name}gnr-{args['width']}.vasp"
+        
+        os.chdir('output')
 
         gnr = func(args["width"], hydrogen=not args["no_hydrogen"])
         if args["length"]:
             gnr.make_supercell([args["length"], 1, 1])
-
-        gnr.to(filename=args["output"], fmt="poscar")
+        
+        #For edge structures
+        edge_combinations = edge_types(gnr)
+        print(len(edge_combinations))
+        for i, cell in enumerate(edge_combinations): 
+            add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
+            cell.lattice = Lattice(matrix=cell.lattice.matrix * DEFAULT_CC_DIST)
+            cell.to(filename=f"periodic-{name}gnr-w{args['width']}xl{args['length']}-" + str(i) + ".vasp", fmt="poscar")
+        
+        # gnr.to(filename=args["output"], fmt="poscar")
     else:
         if args["zigzag"]:
             print("only periodic zigzag GNR generation is supported",
