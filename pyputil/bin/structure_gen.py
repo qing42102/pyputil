@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+import time
 
 from pyputil.structure import add_vacancy_defects, add_hydrogen
 from pyputil.structure.gnr import generate_periodic_agnr, generate_finite_agnr, \
@@ -97,8 +98,10 @@ def run_gnr(args):
             gnr.make_supercell([args["length"], 1, 1])
         
         #For edge structures
+        start = time.time()
         edge_combinations = edge_types(gnr)
         print(len(edge_combinations))
+        print(time.time() - start)
         for i, cell in enumerate(edge_combinations): 
             add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
             cell.lattice = Lattice(matrix=cell.lattice.matrix * DEFAULT_CC_DIST)

@@ -53,7 +53,7 @@ def zgnr_unit_cell(vacuum_sep: float = 10) -> Structure:
         coords_are_cartesian=True,
     )
 
-
+'''
 def edge_types(cell: Structure, atom_list = None, combinations = None):
     #Get all the bonds
     all_bonds = calculate_bond_list(structure=cell)
@@ -108,55 +108,85 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
                     structures.extend(edge_types(cell_temp, atom_list_temp, combinations))
 
     return structures
-
 '''
+
 def edge_types(cell: Structure, combinations = None):
+
+    def recurse_bonds(current_bonds: np.array, all_bonds: np.array, previous_atom = -1, traverse_atoms = None):
+        if traverse_atoms == None:
+            traverse_atoms = dict()
+        
+        for bonds in current_bonds:
+            if bonds[4] != previous_atom and bonds[0] != -1:  
+                current_atom = bonds[3]
+                neighbor_atom = bonds[4]
+                if neighbor_atom not in traverse_atoms:
+                    traverse_atoms[neighbor_atom] = {bonds[0]}
+                    recurse_bonds(all_bonds[neighbor_atom], all_bonds, current_atom, traverse_atoms)
+                else:
+                    traverse_atoms[neighbor_atom].add(bonds[0])
+        return traverse_atoms
+
+    #To check whether the graphene structure is broken if there is an atom with only 1 bond
+    def broken_structure(cell: Structure):
+        try: 
+            all_bonds = calculate_bond_list(structure=cell)
+        except IndexError: 
+            return True
+
+        for atoms in all_bonds:
+            if atoms.shape[0] == 1:
+                return True
+
+        atom0 = all_bonds[0][0][3]
+        traverse_atoms = recurse_bonds(all_bonds[0], all_bonds)
+
+        traverse_path = set()
+        for i in traverse_atoms.values():
+            traverse_path.update(i)
+        if atom0 not in traverse_atoms.keys() or 1 not in traverse_path:
+            return True
+
+        return False
+
     #Get all the bonds
     all_bonds = calculate_bond_list(structure=cell)
 
     #Get the atoms with only 2 bonds
     atoms_2bonds = []
-    atoms_2bonds_index = []
+    atoms_2bonds_index = set()
     for index, atoms in enumerate(all_bonds):
-        if len(atoms) == 2:
+        if atoms.shape[0] == 2:
             atoms_2bonds.append(atoms)
-            atoms_2bonds_index.append(index)
-
-    #To check whether the graphene structure is broken if there is an atom with only 1 bond
-    def broken_structure(cell: Structure):
-        all_bonds = calculate_bond_list(structure=cell)
-        for atoms in all_bonds:
-            if len(atoms) == 1:
-                return True
-        return False
+            atoms_2bonds_index.add(index)
 
     #Store all possible combinations of the cell with the removed atoms in a list
     if combinations == None:
         combinations = []
 
     for atoms in atoms_2bonds:
-        for bonds in atoms:
-            #Go through the atoms with only 2 bonds and check if its neighbor has 2 bonds. 
-            if bonds[4] in atoms_2bonds_index:
-                cell_temp = cell.copy()
-                cell_temp.remove_sites([bonds[3], bonds[4]])
-                #Check whether there are duplicates and if the structure is broken
-                if broken_structure(cell_temp) == False and cell_temp not in combinations:
-                    combinations.append(cell_temp)
-                    edge_types(cell_temp, combinations)
-    
-    # #If there are no combinations left, end the recursion
-    # if len(combinations) == 0:
-    #     return combinations
-    # else:
-    #     #Recurse for every combinations
-    #     for all_cell in combinations:
-    #         combinations += edge_types(all_cell)
-    #         #Remove the duplicates as it recurses
-    #         combinations = [i for n, i in enumerate(combinations) if i not in combinations[:n]] 
+        bond1 = atoms[0]
+        bond2 = atoms[1]
+        bond1_in_2bonds = bond1[4] in atoms_2bonds_index
+        bond2_in_2bonds = bond2[4] in atoms_2bonds_index
+        cell_temp = cell.copy()
+        if bond1_in_2bonds and bond2_in_2bonds:
+            cell_temp.remove_sites([bond1[3], bond1[4], bond2[4]])
+        elif not bond1_in_2bonds and not bond2_in_2bonds:
+            cell_temp.remove_sites([bond1[3]]) 
+        elif bond1_in_2bonds:
+            cell_temp.remove_sites([bond1[3], bond1[4]])
+        elif bond2_in_2bonds:
+            cell_temp.remove_sites([bond2[3], bond2[4]])
+
+        #Check whether there are duplicates and if the structure is broken
+        if cell_temp != cell and broken_structure(cell_temp) == False and cell_temp not in combinations:
+            combinations.append(cell_temp)
+            edge_types(cell_temp, combinations)
+
 
     return combinations
-'''
+
 
 def generate_periodic_agnr(
         width_n: int,
@@ -218,15 +248,11 @@ def generate_periodic_zgnr(
     cell = add_vacuum_sep(cell, vy=vacuum_sep, vz=vacuum_sep)
     # center new structure
     cell = center_structure(cell)
-    if hydrogen:
-        add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
+    # if hydrogen:
+    #     add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
 
     # scale to bond distances
-    return Structure(
-        lattice=Lattice(matrix=cell.lattice.matrix * bond_dist),
-        species=cell.species,
-        coords=cell.frac_coords,
-    )
+    return cell
 
 
 def _generate_finite_agnr_from_periodic(
