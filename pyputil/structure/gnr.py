@@ -110,25 +110,41 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
     return structures
 '''
 
-def edge_types(cell: Structure, combinations = None):
+def edge_types(cell: Structure, atom_list = None, combinations = None):
 
     def recurse_bonds(current_bonds: np.array, all_bonds: np.array, previous_atom = -1, traverse_atoms = None):
+        ''' 
+        Get a set of atoms that can be traversed by starting from a atom
+
+        Return a dictionary, traverse_atoms, in which the keys are the atoms traversed and the 
+        values are a set of periodic direction to move to that atom
+        '''
+
         if traverse_atoms == None:
             traverse_atoms = dict()
         
         for bonds in current_bonds:
+            # Do not move back to the previous atom
+            # Do not move in the negative periodic direction
             if bonds[4] != previous_atom and bonds[0] != -1:  
                 current_atom = bonds[3]
                 neighbor_atom = bonds[4]
+
+                # Create the key if the atom has not been traversed
                 if neighbor_atom not in traverse_atoms:
                     traverse_atoms[neighbor_atom] = {bonds[0]}
                     recurse_bonds(all_bonds[neighbor_atom], all_bonds, current_atom, traverse_atoms)
+                # Add the new periodic direction. The values can only be 0 or 1
                 else:
                     traverse_atoms[neighbor_atom].add(bonds[0])
+        
         return traverse_atoms
 
-    #To check whether the graphene structure is broken if there is an atom with only 1 bond
     def broken_structure(cell: Structure):
+        ''' 
+        Check whether the graphene structure is broken if there is an atom with only 1 bond or 
+        if the structure is no longer periodic
+        '''
         try: 
             all_bonds = calculate_bond_list(structure=cell)
         except IndexError: 
@@ -138,21 +154,23 @@ def edge_types(cell: Structure, combinations = None):
             if atoms.shape[0] == 1:
                 return True
 
+        # Get the list of atoms traversed by starting from atom 0
         atom0 = all_bonds[0][0][3]
         traverse_atoms = recurse_bonds(all_bonds[0], all_bonds)
-
         traverse_path = set()
         for i in traverse_atoms.values():
             traverse_path.update(i)
+
+        # If there is no path moving back to atom 0 or if no positive periodic direction is 
+        # taken, then the structure is broken
         if atom0 not in traverse_atoms.keys() or 1 not in traverse_path:
             return True
 
         return False
 
-    #Get all the bonds
     all_bonds = calculate_bond_list(structure=cell)
 
-    #Get the atoms with only 2 bonds
+    # Get the atoms with only 2 bonds
     atoms_2bonds = []
     atoms_2bonds_index = set()
     for index, atoms in enumerate(all_bonds):
@@ -160,9 +178,15 @@ def edge_types(cell: Structure, combinations = None):
             atoms_2bonds.append(atoms)
             atoms_2bonds_index.add(index)
 
-    #Store all possible combinations of the cell with the removed atoms in a list
+    # Store the set of atoms of the structures for search for duplicates
     if combinations == None:
-        combinations = []
+        combinations = set()
+
+    if atom_list is None:
+        atom_list = [i for i in range(len(all_bonds))]
+
+    # Store all possible structures with the removed atoms in a list
+    structures = []
 
     for atoms in atoms_2bonds:
         bond1 = atoms[0]
@@ -170,22 +194,36 @@ def edge_types(cell: Structure, combinations = None):
         bond1_in_2bonds = bond1[4] in atoms_2bonds_index
         bond2_in_2bonds = bond2[4] in atoms_2bonds_index
         cell_temp = cell.copy()
+        atom_list_temp = atom_list.copy()
+
+        # Remove the atoms from both the atom_list and the structure
         if bond1_in_2bonds and bond2_in_2bonds:
+            bond_list = [bond1[3], bond1[4], bond2[4]]
+            del atom_list_temp[max(bond_list)]
+            bond_list.remove(max(bond_list))
+            del atom_list_temp[max(bond_list)]
+            del atom_list_temp[min(bond_list)]
             cell_temp.remove_sites([bond1[3], bond1[4], bond2[4]])
         elif not bond1_in_2bonds and not bond2_in_2bonds:
+            del atom_list_temp[bond1[3]]
             cell_temp.remove_sites([bond1[3]]) 
         elif bond1_in_2bonds:
+            del atom_list_temp[max([bond1[3], bond1[4]])]
+            del atom_list_temp[min([bond1[3], bond1[4]])]
             cell_temp.remove_sites([bond1[3], bond1[4]])
         elif bond2_in_2bonds:
+            del atom_list_temp[max([bond2[3], bond2[4]])]
+            del atom_list_temp[min([bond2[3], bond2[4]])]
             cell_temp.remove_sites([bond2[3], bond2[4]])
 
-        #Check whether there are duplicates and if the structure is broken
-        if cell_temp != cell and broken_structure(cell_temp) == False and cell_temp not in combinations:
-            combinations.append(cell_temp)
-            edge_types(cell_temp, combinations)
+        # Check whether there are duplicates and if the structure is broken
+        if cell_temp != cell and atom_list_temp != atom_list:
+            if broken_structure(cell_temp) == False and tuple(atom_list_temp) not in combinations:
+                combinations.add(tuple(atom_list_temp))
+                structures.append(cell_temp)
+                structures.extend(edge_types(cell_temp, atom_list_temp, combinations))
 
-
-    return combinations
+    return structures
 
 
 def generate_periodic_agnr(
