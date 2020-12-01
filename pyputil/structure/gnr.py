@@ -163,7 +163,8 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
 
         # If there is no path moving back to atom 0 or if no positive periodic direction is 
         # taken, then the structure is broken
-        if atom0 not in traverse_atoms.keys() or 1 not in traverse_path:
+        if atom0 not in traverse_atoms.keys() or 1 not in traverse_path \
+            or len(traverse_atoms.keys()) != len(all_bonds):
             return True
 
         return False
@@ -171,11 +172,9 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
     all_bonds = calculate_bond_list(structure=cell)
 
     # Get the atoms with only 2 bonds
-    atoms_2bonds = []
     atoms_2bonds_index = set()
     for index, atoms in enumerate(all_bonds):
         if atoms.shape[0] == 2:
-            atoms_2bonds.append(atoms)
             atoms_2bonds_index.add(index)
 
     # Store the set of atoms of the structures for search for duplicates
@@ -188,33 +187,45 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
     # Store all possible structures with the removed atoms in a list
     structures = []
 
-    for atoms in atoms_2bonds:
+    for atoms in all_bonds:
         bond1 = atoms[0]
         bond2 = atoms[1]
         bond1_in_2bonds = bond1[4] in atoms_2bonds_index
         bond2_in_2bonds = bond2[4] in atoms_2bonds_index
+
         cell_temp = cell.copy()
         atom_list_temp = atom_list.copy()
 
         # Remove the atoms from both the atom_list and the structure
+        bond_list = None
         if bond1_in_2bonds and bond2_in_2bonds:
             bond_list = [bond1[3], bond1[4], bond2[4]]
+            cell_temp.remove_sites([bond1[3], bond1[4], bond2[4]])
+        elif atoms.shape[0] == 3:
+            bond3 = atoms[2]
+            bond3_in_2bonds = bond3[4] in atoms_2bonds_index
+            
+            if bond1_in_2bonds and bond3_in_2bonds:
+                bond_list = [bond1[3], bond1[4], bond3[4]]
+                cell_temp.remove_sites([bond1[3], bond1[4], bond3[4]])
+            elif bond2_in_2bonds and bond3_in_2bonds:
+                bond_list = [bond2[3], bond2[4], bond3[4]]
+                cell_temp.remove_sites([bond2[3], bond2[4], bond3[4]])
+        elif bond1[3] in atoms_2bonds_index and bond1_in_2bonds:
+            del atom_list_temp[max([bond1[3], bond1[4]])]
+            del atom_list_temp[min([bond1[3], bond1[4]])]
+            cell_temp.remove_sites([bond1[3], bond1[4]])
+        elif bond1[3] in atoms_2bonds_index and bond2_in_2bonds:
+            del atom_list_temp[max([bond1[3], bond2[4]])]
+            del atom_list_temp[min([bond1[3], bond2[4]])]
+            cell_temp.remove_sites([bond1[3], bond2[4]])
+
+
+        if bond_list != None:
             del atom_list_temp[max(bond_list)]
             bond_list.remove(max(bond_list))
             del atom_list_temp[max(bond_list)]
             del atom_list_temp[min(bond_list)]
-            cell_temp.remove_sites([bond1[3], bond1[4], bond2[4]])
-        elif not bond1_in_2bonds and not bond2_in_2bonds:
-            del atom_list_temp[bond1[3]]
-            cell_temp.remove_sites([bond1[3]]) 
-        elif bond1_in_2bonds:
-            del atom_list_temp[max([bond1[3], bond1[4]])]
-            del atom_list_temp[min([bond1[3], bond1[4]])]
-            cell_temp.remove_sites([bond1[3], bond1[4]])
-        elif bond2_in_2bonds:
-            del atom_list_temp[max([bond2[3], bond2[4]])]
-            del atom_list_temp[min([bond2[3], bond2[4]])]
-            cell_temp.remove_sites([bond2[3], bond2[4]])
 
         # Check whether there are duplicates and if the structure is broken
         if cell_temp != cell and atom_list_temp != atom_list:
