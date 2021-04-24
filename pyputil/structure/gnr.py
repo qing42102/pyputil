@@ -53,8 +53,16 @@ def zgnr_unit_cell(vacuum_sep: float = 10) -> Structure:
         coords_are_cartesian=True,
     )
 
-'''
-def edge_types(cell: Structure, atom_list = None, combinations = None):
+def agnr_edge_types(cell: Structure, atom_list = None, combinations = None):
+    
+    #To check whether the graphene structure is broken if there is an atom with only 1 bond
+    def broken_structure(cell: Structure):
+        all_bonds = calculate_bond_list(structure=cell)
+        for atoms in all_bonds:
+            if len(atoms) == 1:
+                return True
+        return False
+
     #Get all the bonds
     all_bonds = calculate_bond_list(structure=cell)
 
@@ -65,14 +73,6 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
         if len(atoms) == 2:
             atoms_2bonds.append(atoms)
             atoms_2bonds_index.append(index)
-
-    #To check whether the graphene structure is broken if there is an atom with only 1 bond
-    def broken_structure(cell: Structure):
-        all_bonds = calculate_bond_list(structure=cell)
-        for atoms in all_bonds:
-            if len(atoms) == 1:
-                return True
-        return False
 
     #Store the combinations of atoms indices list
     if combinations == None:
@@ -108,9 +108,8 @@ def edge_types(cell: Structure, atom_list = None, combinations = None):
                     structures.extend(edge_types(cell_temp, atom_list_temp, combinations))
 
     return structures
-'''
 
-def edge_types(cell: Structure, atom_list = None, combinations = None):
+def zgnr_edge_types(cell: Structure, atom_list = None, combinations = None):
 
     def recurse_bonds(current_bonds: np.array, all_bonds: np.array, previous_atom = -1, traverse_atoms = None):
         ''' 

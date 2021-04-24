@@ -99,9 +99,13 @@ def run_gnr(args):
         
         #For edge structures
         start = time.time()
-        edge_combinations = edge_types(gnr)
+        if args["zigzag"]:
+            edge_combinations = zgnr_edge_types(gnr)
+        else:
+            edge_combinations = agnr_edge_types(gnr)
         print(len(edge_combinations))
         print(time.time() - start)
+        
         for i, cell in enumerate(edge_combinations): 
             add_hydrogen(cell, cutoff=1.05, dist=DEFAULT_CH_DIST / DEFAULT_CC_DIST)
             cell.lattice = Lattice(matrix=cell.lattice.matrix * DEFAULT_CC_DIST)
